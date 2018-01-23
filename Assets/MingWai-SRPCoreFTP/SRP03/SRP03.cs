@@ -135,10 +135,12 @@ public static class SRP03Rendering
                 if(camera == cullingCam) //only show result of that camera
                 {
                     string tx = "";
-                    tx += "Culling Camera : " + cullingCam.name + " \n";
+                    tx += "Culling Result of : " + cullingCam.name + " \n";
+                    tx += "\n";
                     //-------------------------------
-                    tx += "Lights : \n";
                     VisibleLight[] ls = cull.visibleLights.ToArray();
+                    tx += "Lights : Visible : "+ls.Length+"\n";
+                    
                     if (lights != null)
                     {
                         for (int i = 0; i < lights.Length; i++)
@@ -167,8 +169,9 @@ public static class SRP03Rendering
                     }
                     tx += "\n";
                     //-------------------------------
-                    tx += "Reflection Probes : \n";
                     VisibleReflectionProbe[] rs = cull.visibleReflectionProbes.ToArray();
+                    tx += "Reflection Probes : Visible : "+rs.Length+"\n";
+                    
                     if (reflprobes != null)
                     {
                         for (int i = 0; i < reflprobes.Length; i++)
