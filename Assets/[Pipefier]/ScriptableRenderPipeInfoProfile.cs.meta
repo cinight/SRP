@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 23656d45957dec64ebe1343d878cb8fb
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - sceneInfo: {instanceID: 0}
+  - lightweightProfile: {fileID: 11400000, guid: ebdaef03b77ab144b85e231210ed6e88,
+      type: 2}
+  - hightDefinitionProfile: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
