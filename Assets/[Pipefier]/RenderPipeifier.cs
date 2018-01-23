@@ -2,9 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+
+#if UNITY_EDITOR
 using UnityEditor;
-using UnityEngine.SceneManagement;
 using UnityEditor.SceneManagement;
+#endif
+
+using UnityEngine.SceneManagement;
 using System.IO;
 
 public class objectInformation
@@ -56,6 +60,7 @@ public enum UpdateType
     UpdateMaterials
 }
 
+#if UNITY_EDITOR
 public class RenderPipeifier : EditorWindow
 {
 
@@ -686,3 +691,4 @@ public class RenderPipeifier : EditorWindow
         // Debug.Log("<color=orange>Saved Scene</color>");
     }
 }
+#endif

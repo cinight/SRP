@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlaymodeSwitcher : MonoBehaviour
 {
-
+#if UNITY_EDITOR
     private RenderPipeifier pipe;
 
     // Update is called once per frame
@@ -28,4 +28,5 @@ public class PlaymodeSwitcher : MonoBehaviour
             pipe.SetPipe();
         }
     }
+#endif
 }

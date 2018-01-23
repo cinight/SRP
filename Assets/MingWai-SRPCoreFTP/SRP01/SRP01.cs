@@ -51,11 +51,16 @@ public static class SRP01Rendering
     static double t = 0;
     static double avgt = 0;
     static int skipcount = 1000;
+    static UpdateText text;
 
     // Main entry point for our scriptable render loop
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
         //bool stereoEnabled = XRSettings.isDeviceActive;
+        if(text == null)
+        {
+            text = Camera.main.GetComponent<UpdateText>();
+        }
 
         foreach (Camera camera in cameras)
         {
@@ -88,11 +93,26 @@ public static class SRP01Rendering
 
                     //Average
                     alltime += t;
-                    avgt = alltime/((count-skipcount)*1.000000000f);
 
-                    //Show cull time
-                    Debug.Log("Delta Time = "+t+"ms, Average = "+avgt + "ms count = "+count);
+                    if(count == 2000)
+                    {
+                        avgt = alltime/((count-skipcount)*1.000000000f);
 
+                        //Show cull time
+                        string content = "Delta Time = "+t+"ms \n Average = "+avgt + "ms \n count = "+count;
+                        Debug.Log(content);
+                        text.UpdateTextContent(content);
+                    }
+                    else if(count < 2000)
+                    {
+                        Debug.Log("now sampling 1000 frames...");
+                        text.UpdateTextContent("now sampling 1000 frames..."+count);
+                    }
+                }
+                else
+                {
+                        Debug.Log("skipping first 1000 frames...");
+                        text.UpdateTextContent("skipping first 1000 frames..."+count);
                 }
 
 
