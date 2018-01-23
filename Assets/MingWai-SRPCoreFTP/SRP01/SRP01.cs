@@ -50,6 +50,7 @@ public static class SRP01Rendering
     static int count = 1;
     static double t = 0;
     static double avgt = 0;
+    static int skipcount = 1000;
 
     // Main entry point for our scriptable render loop
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
@@ -67,8 +68,11 @@ public static class SRP01Rendering
 
             if(camera == Camera.main)
             {
-                //Before Cull
-                t = Time.realtimeSinceStartup;
+                if(count > skipcount)
+                {
+                    //Before Cull
+                    t = Time.realtimeSinceStartup;
+                }
             }
 
             //Do Cull
@@ -76,16 +80,21 @@ public static class SRP01Rendering
 
             if(camera == Camera.main)
             {
-                //After Cull
-                t = Time.realtimeSinceStartup - t;
-                t *= 1000.000000000000f;
+                if(count > skipcount)
+                {
+                    //After Cull
+                    t = Time.realtimeSinceStartup - t;
+                    t *= 1000.000000000000f;
 
-                //Average
-                alltime += t;
-                avgt = alltime/(count*1.000000000f);
+                    //Average
+                    alltime += t;
+                    avgt = alltime/((count-skipcount)*1.000000000f);
 
-                //Show cull time
-                Debug.Log("Delta Time = "+t+"ms, Average = "+avgt + "ms count = "+count);
+                    //Show cull time
+                    Debug.Log("Delta Time = "+t+"ms, Average = "+avgt + "ms count = "+count);
+
+                }
+
 
                 count++;
             }
