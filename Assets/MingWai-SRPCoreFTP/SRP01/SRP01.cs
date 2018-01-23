@@ -57,11 +57,6 @@ public static class SRP01Rendering
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
         //bool stereoEnabled = XRSettings.isDeviceActive;
-        if(text == null)
-        {
-            text = Camera.main.GetComponent<UpdateText>();
-        }
-
         foreach (Camera camera in cameras)
         {
             // Culling
@@ -73,11 +68,8 @@ public static class SRP01Rendering
 
             if(camera == Camera.main)
             {
-                if(count > skipcount)
-                {
-                    //Before Cull
-                    t = Time.realtimeSinceStartup;
-                }
+                //Before Cull
+                t = Time.realtimeSinceStartup;
             }
 
             //Do Cull
@@ -85,10 +77,14 @@ public static class SRP01Rendering
 
             if(camera == Camera.main)
             {
+                t = Time.realtimeSinceStartup - t;
+                if(text == null)
+                {
+                    text = Camera.main.GetComponent<UpdateText>();
+                }
                 if(count > skipcount)
                 {
                     //After Cull
-                    t = Time.realtimeSinceStartup - t;
                     t *= 1000.000000000000f;
 
                     //Average
@@ -101,17 +97,20 @@ public static class SRP01Rendering
                         //Show cull time
                         string content = "Delta Time = "+t+"ms \n Average = "+avgt + "ms \n count = "+count;
                         Debug.Log(content);
+                        if(text != null)
                         text.UpdateTextContent(content);
                     }
                     else if(count < 2000)
                     {
                         Debug.Log("now sampling 1000 frames...");
+                        if(text != null)
                         text.UpdateTextContent("now sampling 1000 frames..."+count);
                     }
                 }
                 else
                 {
                         Debug.Log("skipping first 1000 frames...");
+                        if(text != null)
                         text.UpdateTextContent("skipping first 1000 frames..."+count);
                 }
 
