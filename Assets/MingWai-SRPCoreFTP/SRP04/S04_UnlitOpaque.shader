@@ -101,12 +101,12 @@
 				return o;
 			}
 			
-			UNITY_DECLARE_FRAMEBUFFER_INPUT_FLOAT(0);
+			#define idx 0
+			UNITY_DECLARE_FRAMEBUFFER_INPUT_FLOAT(idx);
 
 			void frag (v2f i, inout RTstruct o )
 			{
-				float4 uv = i.fbUV;
-				float4 col = UNITY_READ_FRAMEBUFFER_INPUT(0, uv);
+				float4 col = UNITY_READ_FRAMEBUFFER_INPUT(idx, i.fbUV);
 				o.Albedo += col;
 				o.Emission += col;
 			}
