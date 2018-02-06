@@ -14,7 +14,7 @@ public class SRP05 : RenderPipelineAsset
     public bool DrawTransparent = true;
 
     #if UNITY_EDITOR
-    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP05", priority = CoreUtils.assetCreateMenuPriority1)]
+    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP05", priority = 1)]
     static void CreateSRP05()
     {
         var instance = ScriptableObject.CreateInstance<SRP05>();
@@ -162,10 +162,10 @@ public static class SRP05Rendering
             context.SetupCameraProperties(camera);
 
             // clear depth buffer
-            CommandBuffer cmd = CommandBufferPool.Get();
+            CommandBuffer cmd = new CommandBuffer();
             cmd.ClearRenderTarget(true, !SRP05CP.DrawSkybox, SRP05CP.ClearColor);
             context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
+            cmd.Release();
 
             // Setup global lighting shader variables
             //SetupLightShaderVariables(cull.visibleLights, context);

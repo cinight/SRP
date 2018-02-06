@@ -16,7 +16,7 @@ using UnityEngine.XR;
 public class SRP01 : RenderPipelineAsset
 {
 #if UNITY_EDITOR
-    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP01", priority = CoreUtils.assetCreateMenuPriority1)]
+    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP01", priority = 1)]
     static void CreateSRP01()
     {
         var instance = ScriptableObject.CreateInstance<SRP01>();
@@ -131,10 +131,10 @@ public static class SRP01Rendering
             //}
 
             // clear depth buffer
-            CommandBuffer cmd = CommandBufferPool.Get();
+            CommandBuffer cmd = new CommandBuffer();;
             cmd.ClearRenderTarget(true, false, Color.black);
             context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
+            cmd.Release();
 
             // Setup global lighting shader variables
             SetupLightShaderVariables(cull.visibleLights, context);
@@ -243,7 +243,7 @@ public static class SRP01Rendering
         GetShaderConstantsFromNormalizedSH(ref ambientSH, shConstants);
 
         // setup global shader variables to contain all the data computed above
-        CommandBuffer cmd = CommandBufferPool.Get();
+        CommandBuffer cmd = new CommandBuffer();
         cmd.SetGlobalVectorArray("globalLightColor", lightColors);
         cmd.SetGlobalVectorArray("globalLightPos", lightPositions);
         cmd.SetGlobalVectorArray("globalLightSpotDir", lightSpotDirections);
@@ -251,7 +251,7 @@ public static class SRP01Rendering
         cmd.SetGlobalVector("globalLightCount", new Vector4(lightCount, 0, 0, 0));
         cmd.SetGlobalVectorArray("globalSH", shConstants);
         context.ExecuteCommandBuffer(cmd);
-        CommandBufferPool.Release(cmd);
+        cmd.Release();
     }
 
     // Prepare L2 spherical harmonics values for efficient evaluation in a shader

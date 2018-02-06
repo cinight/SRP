@@ -7,7 +7,7 @@ using UnityEngine.Experimental.Rendering;
 public class SRP06 : RenderPipelineAsset
 {
     #if UNITY_EDITOR
-    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP06", priority = CoreUtils.assetCreateMenuPriority1)]
+    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP06", priority = 1)]
     static void CreateSRP06()
     {
         var instance = ScriptableObject.CreateInstance<SRP06>();
@@ -53,10 +53,10 @@ public static class SRP06Rendering
         context.SetupCameraProperties(camera);
 
         // clear depth buffer
-        CommandBuffer cmd = CommandBufferPool.Get();
+        CommandBuffer cmd = new CommandBuffer();
         cmd.ClearRenderTarget(true, false, Color.black);
         context.ExecuteCommandBuffer(cmd);
-        CommandBufferPool.Release(cmd);
+        cmd.Release();
 
         // Draw skybox
         context.DrawSkybox(camera);
