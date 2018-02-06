@@ -90,28 +90,9 @@ public static class SRP_RenderStateRendering
             DrawRendererSettings drawSettings = new DrawRendererSettings(camera, passName);
             FilterRenderersSettings filterSettings = new FilterRenderersSettings(true);
 
-            // Draw opaque objects using BasicPass shader pass
-            filterSettings.layerMask = LayerMask.GetMask("Default");
-            drawSettings.sorting.flags = SortFlags.CommonOpaque;
-            filterSettings.renderQueueRange = RenderQueueRange.opaque;
-            context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
-
-            // Draw transparent objects using BasicPass shader pass
-            filterSettings.layerMask = LayerMask.GetMask("Default");
-            drawSettings.sorting.flags = SortFlags.CommonTransparent;
-            filterSettings.renderQueueRange = RenderQueueRange.transparent;
-            context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
-
             //*************************************************************
             // Block
-            RenderStateBlock rsb = new RenderStateBlock();
-
-            RenderStateMask mask = rsb.mask;
-            mask = RenderStateMask.Depth;
-            mask |= RenderStateMask.Blend;
-            mask |= RenderStateMask.Raster;
-            mask |= RenderStateMask.Stencil;
-            rsb.mask = mask;
+            RenderStateBlock rsb = new RenderStateBlock(RenderStateMask.Depth | RenderStateMask.Blend | RenderStateMask.Raster | RenderStateMask.Stencil );
 
             DepthState ds = rsb.depthState;//
             ds.writeEnabled = true;
@@ -161,27 +142,15 @@ public static class SRP_RenderStateRendering
             //**************************************************************
             //mapping
 
-            RenderStateBlock rsb_opaque = new RenderStateBlock();
-            RenderStateMask mask_opaque = rsb_opaque.mask;
-            mask_opaque = RenderStateMask.Raster;
-            mask_opaque |= RenderStateMask.Stencil;
-            rsb_opaque.mask = mask_opaque;
+            RenderStateBlock rsb_opaque = new RenderStateBlock( RenderStateMask.Raster | RenderStateMask.Stencil);
             rsb_opaque.rasterState = rsb.rasterState;
             rsb_opaque.stencilState = rsb.stencilState;
             rsb_opaque.stencilReference = rsb.stencilReference;
 
-            RenderStateBlock rsb_trans = new RenderStateBlock();
-            RenderStateMask mask_trans = rsb_trans.mask;
-            mask_trans = RenderStateMask.Blend;
-            rsb_trans.mask = mask_trans;
+            RenderStateBlock rsb_trans = new RenderStateBlock( RenderStateMask.Blend );
             rsb_trans.blendState = rsb.blendState;
 
-            RenderStateBlock rsb_over = new RenderStateBlock();
-            RenderStateMask mask_over = rsb_over.mask;
-            mask_over = RenderStateMask.Raster;
-            mask_over |= RenderStateMask.Depth;
-            mask_over |= RenderStateMask.Stencil;
-            rsb_over.mask = mask_over;
+            RenderStateBlock rsb_over = new RenderStateBlock( RenderStateMask.Raster | RenderStateMask.Depth | RenderStateMask.Stencil);
             rsb_over.depthState = rsb.depthState;
             rsb_over.rasterState = rsb.rasterState;
             rsb_over.stencilState = rsb.stencilState;
@@ -195,6 +164,13 @@ public static class SRP_RenderStateRendering
             };
 
             //**************************************************************
+
+            // Draw opaque objects using BasicPass shader pass
+            filterSettings.layerMask = LayerMask.GetMask("Default");
+            drawSettings.sorting.flags = SortFlags.CommonOpaque;
+            filterSettings.renderQueueRange = RenderQueueRange.opaque;
+            context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+
             // WITH RENDERSTATEBLOCK OPAQUE
             filterSettings.layerMask = LayerMask.GetMask("TransparentFX");
             drawSettings.sorting.flags = SortFlags.CommonOpaque;
@@ -207,6 +183,14 @@ public static class SRP_RenderStateRendering
             filterSettings.renderQueueRange = RenderQueueRange.opaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings, rsm);
 
+            //**************************************************************
+
+            // Draw transparent objects using BasicPass shader pass
+            filterSettings.layerMask = LayerMask.GetMask("Default");
+            drawSettings.sorting.flags = SortFlags.CommonTransparent;
+            filterSettings.renderQueueRange = RenderQueueRange.transparent;
+            context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+
             // WITH RENDERSTATEBLOCK TRANSPARENT
             filterSettings.layerMask = LayerMask.GetMask("TransparentFX");
             drawSettings.sorting.flags = SortFlags.CommonTransparent;
@@ -218,6 +202,7 @@ public static class SRP_RenderStateRendering
             drawSettings.sorting.flags = SortFlags.CommonTransparent;
             filterSettings.renderQueueRange = RenderQueueRange.transparent;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings, rsm);
+
             //**************************************************************
 
             if (stereoEnabled)
