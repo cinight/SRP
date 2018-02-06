@@ -49,8 +49,21 @@ public class SRP04Instance : RenderPipeline
 
 public static class SRP04Rendering
 {
+
+    private static RenderPassAttachment m_Albedo;
+    private static RenderPassAttachment m_Emission;
+    private static RenderPassAttachment m_Depth;
+
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras, SRP04CustomParameter SRP04CP)
     {
+        if(m_Albedo == null) m_Albedo = new RenderPassAttachment(RenderTextureFormat.ARGB32);
+        if(m_Emission == null) m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGBHalf);
+        if(m_Depth == null) m_Depth = new RenderPassAttachment(RenderTextureFormat.Depth);
+
+        m_Albedo.Clear(new Color(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+        m_Emission.Clear(new Color(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+        m_Depth.Clear(new Color(), 1.0f, 0);
+
         foreach (Camera camera in cameras)
         {
             CullResults cull = new CullResults();
@@ -66,35 +79,52 @@ public static class SRP04Rendering
             context.ExecuteCommandBuffer(cmd);
             cmd.Release();
 
-            // Setup global lighting shader variables
-            //SetupLightShaderVariables(cull.visibleLights, context);
-
-            if (SRP04CP.DrawSkybox)
-            {
-                // Draw skybox
-                context.DrawSkybox(camera);
-            }
-
             // Setup DrawSettings and FilterSettings
             ShaderPassName passName = new ShaderPassName("BasicPass");
+            ShaderPassName passNameadd = new ShaderPassName("AddPass");
             DrawRendererSettings drawSettings = new DrawRendererSettings(camera, passName);
             FilterRenderersSettings filterSettings = new FilterRenderersSettings(true);
 
-            if (SRP04CP.DrawOpaque)
-            {
-                // Draw opaque objects using BasicPass shader pass
-                drawSettings.sorting.flags = SortFlags.CommonOpaque;
-                filterSettings.renderQueueRange = RenderQueueRange.opaque;
-                context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
-            }
+            //============================================================
+            m_Albedo.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
 
-            if (SRP04CP.DrawTransparent)
+            using (RenderPass rp = new RenderPass(context, camera.pixelWidth, camera.pixelHeight, 1, new[] { m_Albedo, m_Emission }, m_Depth))
             {
-                // Draw transparent objects using BasicPass shader pass
-                drawSettings.sorting.flags = SortFlags.CommonTransparent;
-                filterSettings.renderQueueRange = RenderQueueRange.transparent;
-                context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+                // Start the first subpass, GBuffer creation: render to albedo, specRough, normal and emission, no need to read any input attachments
+                using (new RenderPass.SubPass(rp, new[] { m_Albedo, m_Emission }, null))
+                {
+                    context.DrawSkybox(camera);
+                    
+                    drawSettings.SetShaderPassName (0,passName);
+
+                    // Draw opaque objects using BasicPass shader pass
+                    drawSettings.sorting.flags = SortFlags.CommonOpaque;
+                    filterSettings.renderQueueRange = RenderQueueRange.opaque;
+                    context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+
+                    // Draw transparent objects using BasicPass shader pass
+                    drawSettings.sorting.flags = SortFlags.CommonTransparent;
+                    filterSettings.renderQueueRange = RenderQueueRange.transparent;
+                    context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+
+                }
+                
+                using (new RenderPass.SubPass(rp, new[] { m_Albedo }, new[] { m_Emission }, false))
+                {
+                    drawSettings.SetShaderPassName (1,passNameadd);
+
+                    // Draw opaque objects using BasicPass shader pass
+                    drawSettings.sorting.flags = SortFlags.CommonOpaque;
+                    filterSettings.renderQueueRange = RenderQueueRange.opaque;
+                    context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+
+                    // Draw transparent objects using BasicPass shader pass
+                    drawSettings.sorting.flags = SortFlags.CommonTransparent;
+                    filterSettings.renderQueueRange = RenderQueueRange.transparent;
+                    context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+                }
             }
+            //============================================================
 
             context.Submit();
         }
