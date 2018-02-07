@@ -109,7 +109,7 @@ public static class SRP04Rendering
 
                 }
                 
-                using (new RenderPass.SubPass(rp, new[] { m_Albedo }, new[] { m_Emission }, false))
+                using (new RenderPass.SubPass(rp, new[] { m_Albedo }, new[] { m_Albedo, m_Emission }, false))
                 {
                     drawSettings.SetShaderPassName (1,passNameadd);
 
