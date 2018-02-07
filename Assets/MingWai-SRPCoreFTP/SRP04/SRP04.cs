@@ -123,7 +123,10 @@ public static class SRP04Rendering
                     filterSettings.renderQueueRange = RenderQueueRange.transparent;
                     context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
                 }
+                Debug.Log("Render pass : camera = "+ camera.name + " sample count = " + rp.sampleCount + " width = " + rp.width + " height = " + rp.height );
+                rp.Dispose();
             }
+            
             //============================================================
 
             context.Submit();
