@@ -3,16 +3,11 @@
 	Properties
 	{
 		_MainTex ("_MainTex (RGBA)", 2D) = "white" {}
-		_Color("Main Color", Color) = (1,1,1,1)
 	}
 	SubShader
 	{
 		Tags { "RenderType"="Opaque" }
 		LOD 200
-
-		//RT0 - Albedo - final binded surface color
-		//RT1 - Emission
-		//DEPTH - Depth
 
 		Pass
 		{
@@ -44,7 +39,6 @@
 
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
-			float4 _Color;
 			
 			v2f vert (appdata v)
 			{
@@ -54,12 +48,14 @@
 				return o;
 			}
 			
-			void frag (v2f i, inout RTstruct o  )
+			RTstruct frag (v2f i)
 			{
-				fixed4 col = tex2D(_MainTex, i.uv);
+				RTstruct o;
 
-				o.Albedo = col;
+				o.Albedo = tex2D(_MainTex, i.uv);
 				o.Emission = frac(float4(_Time.x, _Time.y, _Time.z, _Time.w));
+				
+				return o;
 			}
 			ENDCG
 		}
@@ -104,12 +100,16 @@
 			UNITY_DECLARE_FRAMEBUFFER_INPUT_FLOAT(0);
 			UNITY_DECLARE_FRAMEBUFFER_INPUT_FLOAT(1);
 
-			void frag (v2f i, inout RTstruct o )
+			RTstruct frag (v2f i)
 			{
+				RTstruct o;
+
 				float4 albedo = UNITY_READ_FRAMEBUFFER_INPUT(0, i.fbUV);
 				float4 emission = UNITY_READ_FRAMEBUFFER_INPUT(1, i.fbUV);
 				o.Albedo = albedo + emission;
 				o.Emission = 0;
+
+				return o;
 			}
 			ENDCG
 		}
