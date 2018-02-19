@@ -92,8 +92,6 @@
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
-				o.fbUV.xy = ComputeScreenPos(o.vertex);
-				o.fbUV.zw = float2(0,1);
 				return o;
 			}
 			
@@ -104,8 +102,8 @@
 			{
 				RTstruct o;
 
-				float4 albedo = UNITY_READ_FRAMEBUFFER_INPUT(0, i.fbUV);
-				float4 emission = UNITY_READ_FRAMEBUFFER_INPUT(1, i.fbUV);
+				float4 albedo = UNITY_READ_FRAMEBUFFER_INPUT(0, i.vertex.xyz);
+				float4 emission = UNITY_READ_FRAMEBUFFER_INPUT(1, i.vertex.xyz);
 				o.Albedo = albedo + emission;
 				o.Emission = 0;
 

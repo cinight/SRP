@@ -23,31 +23,27 @@ public class SRP04 : RenderPipelineAsset
 
 public class SRP04Instance : RenderPipeline
 {
-    private RenderPassAttachment m_Albedo;
-    private RenderPassAttachment m_Emission;
-    private RenderPassAttachment m_Depth;
+
 
     public SRP04Instance()
     {
-        m_Albedo = new RenderPassAttachment(RenderTextureFormat.ARGB32);
-        m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGBHalf);
-        m_Depth = new RenderPassAttachment(RenderTextureFormat.Depth);
 
-        m_Albedo.Clear(new Color(0.0f, 0.0f, 0.0f, 0.0f));
-        m_Emission.Clear(new Color(0.0f, 0.0f, 0.0f, 0.0f));
-        m_Depth.Clear(new Color(0.5f, 0.5f, 0.5f, 0.5f));
     }
 
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
     {
         //base.Render(renderContext, cameras);
-        SRP04Rendering.Render(renderContext, cameras, m_Albedo, m_Emission, m_Depth);
+        SRP04Rendering.Render(renderContext, cameras);
     }
 }
 
 public static class SRP04Rendering
 {
-    public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras, RenderPassAttachment m_Albedo, RenderPassAttachment m_Emission, RenderPassAttachment m_Depth)
+    private static RenderPassAttachment m_Albedo;
+    private static RenderPassAttachment m_Emission;
+    private static RenderPassAttachment m_Depth;
+
+    public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
         foreach (Camera camera in cameras)
         {
@@ -58,6 +54,17 @@ public static class SRP04Rendering
             // per-camera built-in shader variables).
             context.SetupCameraProperties(camera);
 
+            //Attachments
+            m_Albedo = new RenderPassAttachment(RenderTextureFormat.ARGB32);
+            m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGBHalf);
+            m_Depth = new RenderPassAttachment(RenderTextureFormat.Depth);
+
+            m_Albedo.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
+
+            m_Albedo.Clear(Color.green);
+            m_Emission.Clear(Color.cyan);
+            m_Depth.Clear(Color.black, 1f, 0);
+
             // Setup DrawSettings and FilterSettings
             ShaderPassName passName = new ShaderPassName("BasicPass");
             ShaderPassName passNameadd = new ShaderPassName("AddPass");
@@ -67,7 +74,7 @@ public static class SRP04Rendering
             filterSettings.renderQueueRange = RenderQueueRange.opaque;
 
             //============================================================
-            m_Albedo.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
+            
 
             using (RenderPass rp = new RenderPass(context, camera.pixelWidth, camera.pixelHeight, 1, new[] { m_Albedo, m_Emission }, m_Depth))
             {
