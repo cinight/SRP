@@ -54,6 +54,8 @@
 
 				o.Albedo = tex2D(_MainTex, i.uv);
 				o.Emission = frac(float4(_Time.x, _Time.y, _Time.z, _Time.w));
+				o.Emission.xy *= i.uv;
+				o.Emission.zw *= i.uv;
 				
 				return o;
 			}
@@ -79,7 +81,6 @@
 			struct v2f
 			{
 				float4 vertex : SV_POSITION;
-				float4 fbUV : TEXCOORD0;
 			};
 
 			struct RTstruct
