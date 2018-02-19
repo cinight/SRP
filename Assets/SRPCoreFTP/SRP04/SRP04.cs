@@ -7,7 +7,7 @@ using UnityEngine.Experimental.Rendering;
 public class SRP04 : RenderPipelineAsset
 {
 #if UNITY_EDITOR
-    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP04", priority = 1)]
+    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP04")]
     static void CreateSRP04()
     {
         var instance = ScriptableObject.CreateInstance<SRP04>();
@@ -17,22 +17,39 @@ public class SRP04 : RenderPipelineAsset
 
     protected override IRenderPipeline InternalCreatePipeline()
     {
-        return new SRP04Instance();
+        return new SRP04Instance(this);
+    }
+}
+
+
+public abstract class RenderPipeline : IRenderPipeline
+{
+    public virtual void Render(ScriptableRenderContext renderContext, Camera[] cameras)
+    {
+        if(disposed)
+            throw new System.ObjectDisposedException(string.Format("{0} has been disposed. Do not call Render on disposed RenderLoops.",this));
+    }
+
+    public bool disposed { get; private set;}
+
+    public virtual void Dispose()
+    {
+        disposed = true;
     }
 }
 
 public class SRP04Instance : RenderPipeline
 {
+    SRP04 m_Parent;
 
-
-    public SRP04Instance()
+    public SRP04Instance(SRP04 parent)
     {
-
+        m_Parent = parent;
     }
 
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
     {
-        //base.Render(renderContext, cameras);
+        base.Render(renderContext, cameras);
         SRP04Rendering.Render(renderContext, cameras);
     }
 }
@@ -56,7 +73,7 @@ public static class SRP04Rendering
 
             //Attachments
             m_Albedo = new RenderPassAttachment(RenderTextureFormat.ARGB32);
-            m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGBHalf);
+            m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGB32);
             m_Depth = new RenderPassAttachment(RenderTextureFormat.Depth);
 
             m_Albedo.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
@@ -66,11 +83,7 @@ public static class SRP04Rendering
             m_Depth.Clear(Color.black, 1f, 0);
 
             // Setup DrawSettings and FilterSettings
-            ShaderPassName passName = new ShaderPassName("BasicPass");
-            ShaderPassName passNameadd = new ShaderPassName("AddPass");
-            DrawRendererSettings drawSettings = new DrawRendererSettings(camera, passName);
             FilterRenderersSettings filterSettings = new FilterRenderersSettings(true);
-            drawSettings.sorting.flags = SortFlags.CommonOpaque;
             filterSettings.renderQueueRange = RenderQueueRange.opaque;
 
             //============================================================
@@ -82,13 +95,13 @@ public static class SRP04Rendering
                 {
                     context.DrawSkybox(camera);
                     
-                    drawSettings.SetShaderPassName (0,passName);
+                    DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("BasicPass"));
                     context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
                 }
                 
                 using (new RenderPass.SubPass(rp, new[] { m_Albedo }, new[] { m_Albedo, m_Emission }, false))
                 {
-                    drawSettings.SetShaderPassName (1,passNameadd);
+                    DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("AddPass"));
                     context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
                 }
                 //rp.Dispose();
