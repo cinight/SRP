@@ -58,6 +58,7 @@ public static class SRP04Rendering
 {
     private static RenderPassAttachment m_Albedo;
     private static RenderPassAttachment m_Emission;
+    private static RenderPassAttachment m_Output;
     private static RenderPassAttachment m_Depth;
 
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
@@ -74,12 +75,14 @@ public static class SRP04Rendering
             //Attachments
             m_Albedo = new RenderPassAttachment(RenderTextureFormat.ARGB32);
             m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGB32);
+            m_Output = new RenderPassAttachment(RenderTextureFormat.ARGB32);
             m_Depth = new RenderPassAttachment(RenderTextureFormat.Depth);
 
-            m_Albedo.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
+            m_Output.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
 
             m_Albedo.Clear(Color.green);
             m_Emission.Clear(Color.cyan);
+            m_Output.Clear(Color.cyan);
             m_Depth.Clear(Color.black, 1f, 0);
 
             // Setup DrawSettings and FilterSettings
@@ -89,22 +92,20 @@ public static class SRP04Rendering
             //============================================================
             
 
-            using (RenderPass rp = new RenderPass(context, camera.pixelWidth, camera.pixelHeight, 1, new[] { m_Albedo, m_Emission }, m_Depth))
+            using (RenderPass rp = new RenderPass(context, camera.pixelWidth, camera.pixelHeight, 1, new[] { m_Albedo, m_Emission, m_Output }, m_Depth))
             {
                 using (new RenderPass.SubPass(rp, new[] { m_Albedo, m_Emission }, null))
                 {
-                    context.DrawSkybox(camera);
-                    
                     DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("BasicPass"));
                     context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
                 }
                 
-                using (new RenderPass.SubPass(rp, new[] { m_Albedo }, new[] { m_Albedo, m_Emission }, false))
+                using (new RenderPass.SubPass(rp, new[] { m_Output }, new[] { m_Albedo, m_Emission }, false))
                 {
+                    context.DrawSkybox(camera);
                     DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("AddPass"));
                     context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
                 }
-                //rp.Dispose();
             }
             //============================================================
             context.Submit();

@@ -83,12 +83,6 @@
 				float4 vertex : SV_POSITION;
 			};
 
-			struct RTstruct
-			{
-				float4 Albedo : SV_Target0;
-				float4 Emission : SV_Target1;
-			};
-			
 			v2f vert (appdata v)
 			{
 				v2f o;
@@ -99,16 +93,12 @@
 			UNITY_DECLARE_FRAMEBUFFER_INPUT_FLOAT(0);
 			UNITY_DECLARE_FRAMEBUFFER_INPUT_FLOAT(1);
 
-			RTstruct frag (v2f i)
+			float4 frag (v2f i) : SV_Target
 			{
-				RTstruct o;
-
 				float4 albedo = UNITY_READ_FRAMEBUFFER_INPUT(0, i.vertex.xyz);
 				float4 emission = UNITY_READ_FRAMEBUFFER_INPUT(1, i.vertex.xyz);
-				o.Albedo = albedo + emission;
-				o.Emission = 0;
 
-				return o;
+				return albedo + emission;
 			}
 			ENDCG
 		}
