@@ -4,57 +4,40 @@ using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
 
 [ExecuteInEditMode]
-public class SRP07 : RenderPipelineAsset
+public class SRP06 : RenderPipelineAsset
 {
-    public SRP07CustomParameter SRP07CP = new SRP07CustomParameter();
-    public Color ClearColor = Color.white;
-    public bool DrawSkybox = true;
-    public bool DrawOpaque = true;
-    public bool DrawTransparent = true;
-
     #if UNITY_EDITOR
-    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP07", priority = 1)]
-    static void CreateSRP07()
+    [UnityEditor.MenuItem("Assets/Create/Render Pipeline/SRPFTP/SRP06", priority = 1)]
+    static void CreateSRP06()
     {
-        var instance = ScriptableObject.CreateInstance<SRP07>();
-        UnityEditor.AssetDatabase.CreateAsset(instance, "Assets/SRP07.asset");
+        var instance = ScriptableObject.CreateInstance<SRP06>();
+        UnityEditor.AssetDatabase.CreateAsset(instance, "Assets/SRP06.asset");
     }
     #endif
 
     protected override IRenderPipeline InternalCreatePipeline()
     {
-        SRP07CP.ClearColor = ClearColor;
-        SRP07CP.DrawSkybox = DrawSkybox;
-        SRP07CP.DrawOpaque = DrawOpaque;
-        SRP07CP.DrawTransparent = DrawTransparent;
-        return new SRP07Instance(SRP07CP);
+        return new SRP06Instance();
     }
 }
 
-public class SRP07Instance : RenderPipeline
+public class SRP06Instance : RenderPipeline
 {
-    public SRP07CustomParameter SRP07CP;
-
-    public SRP07Instance(SRP07CustomParameter SRP07CustomParameter)
+    public SRP06Instance()
     {
-        SRP07CP = SRP07CustomParameter;
     }
 
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
     {
         //base.Render(renderContext, cameras);
-        SRP07Rendering.Render(renderContext, cameras,SRP07CP);
+        SRP06Rendering.Render(renderContext, cameras);
     }
 }
 
-public static class SRP07Rendering
+public static class SRP06Rendering
 {
-    public static TextMesh textMesh;
-
-    public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras, SRP07CustomParameter SRP07CP)
+    public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
-        string tx = "";
-
         foreach (Camera camera in cameras)
         {
             ScriptableCullingParameters cullingParams;
@@ -71,87 +54,53 @@ public static class SRP07Rendering
 
             // clear depth buffer
             CommandBuffer cmd = new CommandBuffer();
-            cmd.ClearRenderTarget(true, !SRP07CP.DrawSkybox, SRP07CP.ClearColor);
+            cmd.ClearRenderTarget(true, false, Color.grey);
             context.ExecuteCommandBuffer(cmd);
             cmd.Release();
 
             // Setup global lighting shader variables
-            SetupLightShaderVariables(cull.visibleLights, context);
+            //SetupLightShaderVariables(cull.visibleLights, context);
 
-            if(SRP07CP.DrawSkybox)
-            {
-                // Draw skybox
-                context.DrawSkybox(camera);
-            }
+            // Draw skybox
+            context.DrawSkybox(camera);
 
             // Setup DrawSettings and FilterSettings
             ShaderPassName passName = new ShaderPassName("BasicPass");
             DrawRendererSettings drawSettings = new DrawRendererSettings(camera, passName);
             FilterRenderersSettings filterSettings = new FilterRenderersSettings(true);
 
-            // ////////////////////////////////////////////////////////////
+            // Draw opaque objects using BasicPass shader pass
+            drawSettings.sorting.flags = SortFlags.CommonOpaque;
+            filterSettings.renderQueueRange = RenderQueueRange.opaque;
+            context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+
+            // Draw shadow
             VisibleLight[] ls = cull.visibleLights.ToArray();
+            SetupLightShaderVariables(cull.visibleLights, context);
             DrawShadowsSettings[] shadowsSettings = new DrawShadowsSettings[ls.Length];
             
             for (int i=0; i<shadowsSettings.Length; i++)
             {
                 shadowsSettings[i] = new DrawShadowsSettings(cull, i);
-            }
-            /*
-            if(camera == Camera.main) //Only generate result from main cam
-            {
-                tx += "DrawShadowsSettings" + "\n"+ "\n";
-
-                for (int i=0; i<ls.Length; i++)
+                if(ls[i].light.shadows != LightShadows.None)
                 {
-                    tx += "lightIndex = " + shadowsSettings[i].lightIndex + " (" + ls[i].light.name + ") " + "\n";
-                    tx += "splitData.cullingPlaneCount = " + shadowsSettings[i].splitData.cullingPlaneCount + "\n";
-                    tx += "splitData.cullingSphere = " + shadowsSettings[i].splitData.cullingSphere + "\n"+ "\n";
-                }
-            
-                // Output to text
-                if (textMesh != null)
-                {
-                    textMesh.text = tx;
-                    Debug.Log("<color=#0F0>TextMesh is updated</color>");
-                }
-                else
-                {
-                    tx = "<color=#F00>TextMesh is null</color> Please hit play if you hasn't";
-                    Debug.Log(tx);
-                }
-            }
-            */
-            // ////////////////////////////////////////////////////////////
-
-            if (SRP07CP.DrawOpaque)
-            {
-                // Draw opaque objects using BasicPass shader pass
-                drawSettings.sorting.flags = SortFlags.CommonOpaque;
-                filterSettings.renderQueueRange = RenderQueueRange.opaque;
-                context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
-                           
-                for (int i=0; i<shadowsSettings.Length; i++)
-                {
-                    //if(ls[i].light.shadows != LightShadows.None)
-                    //context.DrawShadows(ref shadowsSettings[i]);
+                    context.DrawShadows(ref shadowsSettings[i]);
+                    Debug.Log("draw shadow for light "+i);
                 }
             }
 
-            if (SRP07CP.DrawTransparent)
-            {
-                // Draw transparent objects using BasicPass shader pass
-                drawSettings.sorting.flags = SortFlags.CommonTransparent;
-                filterSettings.renderQueueRange = RenderQueueRange.transparent;
-                context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
-            }
+            // Draw transparent objects using BasicPass shader pass
+            //drawSettings.sorting.flags = SortFlags.CommonTransparent;
+            //filterSettings.renderQueueRange = RenderQueueRange.transparent;
+            //context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
 
             context.Submit();
         }
     }
 
+    //----------------------------------------------------------------------------------------------//
 
-    // Setup lighting variables for shader to use
+   // Setup lighting variables for shader to use
     private static void SetupLightShaderVariables(List<VisibleLight> lights, ScriptableRenderContext context)
     {
         // We only support up to 8 visible lights here. More complex approaches would
@@ -226,17 +175,6 @@ public static class SRP07Rendering
 
         // setup global shader variables to contain all the data computed above
         CommandBuffer cmd = new CommandBuffer();
-
-        //Setup shadow variables
-        //float4 unity_ShadowSplitSpheres[4];
-        //float4 unity_ShadowSplitSqRadii;
-        //float4 unity_LightShadowBias;
-        //float4 _LightSplitsNear;
-        //float4 _LightSplitsFar;
-        //float4x4 unity_WorldToShadow[4];
-        //half4 _LightShadowData;
-        //float4 unity_ShadowFadeCenterAndType;
-
         cmd.SetGlobalVectorArray("globalLightColor", lightColors);
         cmd.SetGlobalVectorArray("globalLightPos", lightPositions);
         cmd.SetGlobalVectorArray("globalLightSpotDir", lightSpotDirections);
@@ -272,18 +210,4 @@ public static class SRP07Rendering
         outCoefficients[6].w = 1.0f;
     }
 
-
-}
-
-public class SRP07CustomParameter
-{
-    public Color ClearColor = Color.white;
-    public bool DrawSkybox = true;
-    public bool DrawOpaque = true;
-    public bool DrawTransparent = true;
-
-    public SRP07CustomParameter()
-    {
-        
-    }
 }

@@ -21,93 +21,87 @@ public class SRP04 : RenderPipelineAsset
     }
 }
 
-
-public abstract class RenderPipeline : IRenderPipeline
-{
-    public virtual void Render(ScriptableRenderContext renderContext, Camera[] cameras)
-    {
-        if(disposed)
-            throw new System.ObjectDisposedException(string.Format("{0} has been disposed. Do not call Render on disposed RenderLoops.",this));
-    }
-
-    public bool disposed { get; private set;}
-
-    public virtual void Dispose()
-    {
-        disposed = true;
-    }
-}
-
 public class SRP04Instance : RenderPipeline
 {
     SRP04 m_Parent;
 
+    RenderPassAttachment m_Albedo;
+    RenderPassAttachment m_Emission;
+    RenderPassAttachment m_Output;
+    RenderPassAttachment m_Depth;
+
     public SRP04Instance(SRP04 parent)
     {
         m_Parent = parent;
+
+        //Attachments
+        m_Albedo = new RenderPassAttachment(RenderTextureFormat.ARGB32);
+        m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGB32);
+        m_Output = new RenderPassAttachment(RenderTextureFormat.ARGB32);
+        m_Depth = new RenderPassAttachment(RenderTextureFormat.Depth);
+
+        m_Albedo.Clear(Color.green, 1f , 0);
+        m_Emission.Clear(Color.green, 1f , 0);
+        //m_Output.Clear(Color.cyan);
+        m_Depth.Clear(Color.black, 1f, 0);
+
+        m_Output.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
     }
 
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
     {
         base.Render(renderContext, cameras);
-        SRP04Rendering.Render(renderContext, cameras);
+        SRP04Rendering(renderContext, cameras);
     }
-}
 
-public static class SRP04Rendering
-{
-    private static RenderPassAttachment m_Albedo;
-    private static RenderPassAttachment m_Emission;
-    private static RenderPassAttachment m_Output;
-    private static RenderPassAttachment m_Depth;
-
-    public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
+    public void SRP04Rendering(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
         foreach (Camera camera in cameras)
         {
-            CullResults cull = new CullResults();
-            CullResults.Cull(camera , context , out cull);
+            // Culling
+            ScriptableCullingParameters cullingParams;
+
+            if (!CullResults.GetCullingParameters(camera, out cullingParams))
+                continue;
+            CullResults cull = CullResults.Cull(ref cullingParams, context);
 
             // Setup camera for rendering (sets render target, view/projection matrices and other
             // per-camera built-in shader variables).
             context.SetupCameraProperties(camera);
 
-            //Attachments
-            m_Albedo = new RenderPassAttachment(RenderTextureFormat.ARGB32);
-            m_Emission = new RenderPassAttachment(RenderTextureFormat.ARGB32);
-            m_Output = new RenderPassAttachment(RenderTextureFormat.ARGB32);
-            m_Depth = new RenderPassAttachment(RenderTextureFormat.Depth);
-
-            m_Output.BindSurface(BuiltinRenderTextureType.CameraTarget, false, true);
-
-            m_Albedo.Clear(Color.green);
-            m_Emission.Clear(Color.cyan);
-            m_Output.Clear(Color.cyan);
-            m_Depth.Clear(Color.black, 1f, 0);
-
             // Setup DrawSettings and FilterSettings
-            FilterRenderersSettings filterSettings = new FilterRenderersSettings(true);
-            filterSettings.renderQueueRange = RenderQueueRange.opaque;
-
-            //============================================================
-            
+            //FilterRenderersSettings filterSettings = new FilterRenderersSettings(true);
+            //filterSettings.renderQueueRange = RenderQueueRange.opaque;
 
             using (RenderPass rp = new RenderPass(context, camera.pixelWidth, camera.pixelHeight, 1, new[] { m_Albedo, m_Emission, m_Output }, m_Depth))
             {
                 using (new RenderPass.SubPass(rp, new[] { m_Albedo, m_Emission }, null))
                 {
-                    DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("BasicPass"));
-                    context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+                    var settings = new DrawRendererSettings(camera, new ShaderPassName("BasicPass"))
+                    {
+                        sorting = { flags = SortFlags.CommonOpaque }
+                    };
+
+                   // DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("BasicPass"));
+                    var fs = new FilterRenderersSettings(true);
+                    fs.renderQueueRange = RenderQueueRange.opaque;
+                    context.DrawRenderers(cull.visibleRenderers, ref settings, fs);
                 }
                 
                 using (new RenderPass.SubPass(rp, new[] { m_Output }, new[] { m_Albedo, m_Emission }, false))
                 {
                     context.DrawSkybox(camera);
-                    DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("AddPass"));
-                    context.DrawRenderers(cull.visibleRenderers, ref drawSettings, filterSettings);
+                    var settings = new DrawRendererSettings(camera, new ShaderPassName("AddPass"))
+                    {
+                        sorting = { flags = SortFlags.CommonOpaque }
+                    };
+                    //DrawRendererSettings drawSettings = new DrawRendererSettings(camera, new ShaderPassName("AddPass"));
+                    var fs = new FilterRenderersSettings(true);
+                    fs.renderQueueRange = RenderQueueRange.opaque;
+                    context.DrawRenderers(cull.visibleRenderers, ref settings, fs);
                 }
             }
-            //============================================================
+
             context.Submit();
         }
     }
