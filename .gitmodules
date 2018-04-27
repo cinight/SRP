@@ -1,3 +1,3 @@
 [submodule "Assets/ScriptableRenderPipeline"]
 	path = Assets/ScriptableRenderPipeline
-	url = https://github.com/Unity-Technologies/ScriptableRenderPipeline
+	url = https://github.com/Unity-Technologies/ScriptableRenderPipeline.git
