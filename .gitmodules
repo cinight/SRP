@@ -1,3 +1,6 @@
 [submodule "Assets/ScriptableRenderPipeline"]
 	path = Assets/ScriptableRenderPipeline
 	url = https://github.com/Unity-Technologies/ScriptableRenderPipeline.git
+[submodule "Assets/UTF_Tests_SRPCoreAPI"]
+	path = Assets/UTF_Tests_SRPCoreAPI
+	url = https://github.com/Unity-Technologies/UTF_Tests_SRPCoreAPI.git
