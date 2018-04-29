@@ -45,9 +45,7 @@ public static class SRPPlaygroundPipeline
 
     private static int m_ColorRTid = Shader.PropertyToID("_CameraColorRT");
     private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture");
-    private static int m_OpaqueRTid = Shader.PropertyToID("_GrabTexture");
-    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture");
-    private static RenderTargetIdentifier m_CurrCameraColorRT;
+    //private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture");
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
     private static RenderTargetIdentifier m_DepthRT = new RenderTargetIdentifier(m_DepthRTid);
 
@@ -201,6 +199,16 @@ public static class SRPPlaygroundPipeline
             // Draw OPAQUE objects using ADD pass
             drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
+
+            //************************** Opaque Texture (Grab Pass) ************************************
+            CommandBuffer cmdGrab = new CommandBuffer();
+            cmdGrab.name = "Grab Opaque";
+
+            cmdGrab.Blit(BuiltinRenderTextureType.CameraTarget, m_ColorRT);
+            cmdGrab.SetGlobalTexture("_GrabOpaqueTexture", m_ColorRT);
+
+            context.ExecuteCommandBuffer(cmdGrab);
+            cmdGrab.Release();
 
             //************************** Post-processing for opaque ************************************
             m_CameraPostProcessLayer = camera.GetComponent<PostProcessLayer>();
