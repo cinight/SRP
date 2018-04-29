@@ -4,3 +4,6 @@
 [submodule "Assets/UTF_Tests_SRPCoreAPI"]
 	path = Assets/UTF_Tests_SRPCoreAPI
 	url = https://github.com/Unity-Technologies/UTF_Tests_SRPCoreAPI.git
+[submodule "Assets/UTF_Tests_Shader.git"]
+	path = Assets/UTF_Tests_Shader.git
+	url = https://github.com/Unity-Technologies/UTF_Tests_Shader.git
