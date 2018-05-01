@@ -48,6 +48,7 @@ public static class SRPPlaygroundPipeline
     //private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture");
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
     private static RenderTargetIdentifier m_DepthRT = new RenderTargetIdentifier(m_DepthRTid);
+    private static Material m_CopyDepthMaterial;
 
     private static RenderTextureFormat m_ColorFormat = RenderTextureFormat.DefaultHDR;
     private static PostProcessRenderContext m_PostProcessRenderContext = new PostProcessRenderContext();
@@ -66,6 +67,7 @@ public static class SRPPlaygroundPipeline
 
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
+        if(m_CopyDepthMaterial == null) m_CopyDepthMaterial = new Material(Shader.Find("Hidden/MyTestCopyDepth"));
 
         //************************** SetRenderingFeatures ****************************************
         #if UNITY_EDITOR
@@ -87,6 +89,12 @@ public static class SRPPlaygroundPipeline
         // //////////////////////////////////////////////////////////////////////////////////
         foreach (Camera camera in cameras)
         {
+            //************************** UGUI Geometry on scene view *************************
+            #if UNITY_EDITOR
+                 if (camera.cameraType == CameraType.SceneView)
+                    ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
+            #endif
+
             //************************** Culling ****************************************
             ScriptableCullingParameters cullingParams;
             if (!CullResults.GetCullingParameters(camera, out cullingParams))
@@ -235,6 +243,19 @@ public static class SRPPlaygroundPipeline
                 cmdpp.Release();
             }
 
+            //************************** Scene View ************************************
+            //Copy depth to scene view camera, otherwise the transparent objects won't draw on it...
+            #if UNITY_EDITOR
+                if (camera.cameraType == CameraType.SceneView)
+                {
+                    CommandBuffer cmdSceneDepth = CommandBufferPool.Get("Copy Depth to SceneViewCamera");
+                    //cmdSceneDepth.DisableShaderKeyword("_MSAA_DEPTH");
+                    cmdSceneDepth.Blit(m_DepthRTid, BuiltinRenderTextureType.CameraTarget, m_CopyDepthMaterial);
+                    context.ExecuteCommandBuffer(cmdSceneDepth);
+                    cmdSceneDepth.Release();
+                }
+            #endif
+
             //************************** Transparent ************************************
             filterSettings.renderQueueRange = RenderQueueRange.transparent;
 
@@ -250,8 +271,9 @@ public static class SRPPlaygroundPipeline
             drawSettingsAdd.sorting.flags = SortFlags.CommonTransparent;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
-            //************************** Clean Up ************************************
 
+
+            //************************** Clean Up ************************************
             CommandBuffer cmdclean = new CommandBuffer();
             cmdclean.name = "Clean Up";
             cmdclean.ReleaseTemporaryRT(m_ColorRTid);
