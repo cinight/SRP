@@ -79,7 +79,7 @@ public static class SRPPlaygroundPipeline
                 reflectionProbeSupportFlags = SupportedRenderingFeatures.ReflectionProbeSupportFlags.None,
                 defaultMixedLightingMode = SupportedRenderingFeatures.LightmapMixedBakeMode.Subtractive,
                 supportedMixedLightingModes = SupportedRenderingFeatures.LightmapMixedBakeMode.Subtractive,
-                supportedLightmapBakeTypes = LightmapBakeType.Baked | LightmapBakeType.Mixed,
+                supportedLightmapBakeTypes = LightmapBakeType.Baked | LightmapBakeType.Mixed | LightmapBakeType.Realtime,
                 supportedLightmapsModes = LightmapsMode.CombinedDirectional | LightmapsMode.NonDirectional,
                 rendererSupportsLightProbeProxyVolumes = false,
                 rendererSupportsMotionVectors = false,
@@ -115,6 +115,21 @@ public static class SRPPlaygroundPipeline
             cmdLighting.name = "("+camera.name+")"+ "Lighting variable";
             int additionalLightSet = 0;
             int mainLightIndex = -1;
+
+            Vector4[] lightPositions = new Vector4[8];
+            Vector4[] lightColors = new Vector4[8];
+            Vector4[] lightAttn = new Vector4[8];
+            Vector4[] lightSpotDir = new Vector4[8];
+
+            //Initialise values
+            for(int i=0; i <8; i++)
+            {
+                lightPositions[i] = new Vector4(0.0f, 0.0f, 1.0f, 0.0f);
+                lightColors[i] = Color.black;
+                lightAttn[i] = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
+                lightSpotDir[i] = new Vector4(0.0f, 0.0f, 1.0f, 0.0f);
+            }
+
             for (int i=0; i< cull.visibleLights.Count; i++)
             {
                 VisibleLight light = cull.visibleLights[i];
@@ -123,9 +138,30 @@ public static class SRPPlaygroundPipeline
                 {
                     if (light.lightType == LightType.Directional)
                     {
-                        cmdLighting.SetGlobalVector("_LightColor0", light.light.color);
                         Vector4 dir = light.localToWorld.GetColumn(2);
-                        cmdLighting.SetGlobalVector("_WorldSpaceLightPos0", new Vector4(-dir.x, -dir.y, -dir.z, 0));
+                        lightPositions[0] = new Vector4(-dir.x, -dir.y, -dir.z, 0);
+                        lightColors[0] = light.light.color;
+
+                        /*
+                        float lightRangeSqr = light.range * light.range;
+                        float fadeStartDistanceSqr = 0.8f * 0.8f * lightRangeSqr;
+                        float fadeRangeSqr = (fadeStartDistanceSqr - lightRangeSqr);
+                        float oneOverFadeRangeSqr = 1.0f / fadeRangeSqr;
+                        float lightRangeSqrOverFadeRangeSqr = -lightRangeSqr / fadeRangeSqr;
+                        float quadAtten = 25.0f / lightRangeSqr;
+                        lightAttn[0] = new Vector4(quadAtten, oneOverFadeRangeSqr, lightRangeSqrOverFadeRangeSqr, 1.0f);
+
+                        /*
+                        SphericalHarmonicsL2 ambientSH = RenderSettings.ambientProbe;
+                        Color linearGlossyEnvColor = new Color(ambientSH[0, 0], ambientSH[1, 0], ambientSH[2, 0]) * RenderSettings.reflectionIntensity;
+                        Color glossyEnvColor = CoreUtils.ConvertLinearToActiveColorSpace(linearGlossyEnvColor);
+                        Shader.SetGlobalVector("_GlossyEnvironmentColor", glossyEnvColor);
+                        // Used when subtractive mode is selected
+                        Shader.SetGlobalVector("_SubtractiveShadowColor", CoreUtils.ConvertSRGBToActiveColorSpace(RenderSettings.subtractiveShadowColor));
+                        */
+
+                        cmdLighting.SetGlobalVector("_LightColor0", lightColors[0]);
+                        cmdLighting.SetGlobalVector("_WorldSpaceLightPos0", lightPositions[0] );
                         mainLightIndex = i;
                     }
                 }
@@ -135,6 +171,12 @@ public static class SRPPlaygroundPipeline
                     continue;//so far just do only 1 directional light
                 }
             }
+
+            cmdLighting.SetGlobalVectorArray("unity_LightPosition", lightPositions);
+            cmdLighting.SetGlobalVectorArray("unity_LightColor", lightColors);
+            cmdLighting.SetGlobalVectorArray("unity_LightAtten", lightAttn);
+            cmdLighting.SetGlobalVectorArray("unity_SpotDirection", lightSpotDir);
+
             context.ExecuteCommandBuffer(cmdLighting);
             cmdLighting.Release();
 
