@@ -41,6 +41,15 @@ Shader "Shield 2"
                 float4 projPos : TEXCOORD2;
             };
 
+            sampler2D _CameraDepthTexture;
+            float _InvFade;
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+       
+            fixed4 _TintColor;
+			fixed4 _EdgeAroundColor;
+			fixed _EdgeAroundPower;
+
             v2f vert (appdata_t v)
             {
                 v2f o;
@@ -48,18 +57,10 @@ Shader "Shield 2"
                 o.projPos = ComputeScreenPos (o.vertex);
 
                 COMPUTE_EYEDEPTH(o.projPos.z);
-                o.texcoord = v.texcoord;
+                o.texcoord = v.texcoord * _MainTex_ST.xy + _MainTex_ST.zw;
 
                 return o;
             }
-
-            sampler2D _CameraDepthTexture;
-            float _InvFade;
-            sampler2D _MainTex;
-       
-            fixed4 _TintColor;
-			fixed4 _EdgeAroundColor;
-			fixed _EdgeAroundPower;
 
             fixed4 frag (v2f i) : SV_Target
             {
