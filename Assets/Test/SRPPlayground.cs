@@ -227,19 +227,6 @@ public static class SRPPlaygroundPipeline
             drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
-            //************************** Depth texture ************************************
-            CommandBuffer cmdDepth = new CommandBuffer();
-            cmdDepth.name = "("+camera.name+")"+ "Depth";
-
-            if(camera.cameraType == CameraType.SceneView) m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
-            else m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
-            cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
-            cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
-            cmdDepth.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
-
-            context.ExecuteCommandBuffer(cmdDepth);
-            cmdDepth.Release();
-
             //************************** Opaque Texture (Grab Pass) ************************************
             CommandBuffer cmdGrab = new CommandBuffer();
             cmdGrab.name = "("+camera.name+")"+ "Grab Opaque";
@@ -274,6 +261,19 @@ public static class SRPPlaygroundPipeline
                 context.ExecuteCommandBuffer(cmdpp);
                 cmdpp.Release();
             }
+
+            //************************** Depth texture ************************************
+            CommandBuffer cmdDepth = new CommandBuffer();
+            cmdDepth.name = "("+camera.name+")"+ "Depth";
+
+            if(camera.cameraType == CameraType.SceneView) m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
+            else m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
+            cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
+            cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
+            cmdDepth.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
+
+            context.ExecuteCommandBuffer(cmdDepth);
+            cmdDepth.Release();
 
             //************************** Scene View & Preview Cam ************************************
             #if UNITY_EDITOR
