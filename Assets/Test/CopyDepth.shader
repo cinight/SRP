@@ -17,6 +17,7 @@ Shader "Hidden/MyTestCopyDepth"
 
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile __ _FLIPUV
 
             #include "UnityCG.cginc"
 
@@ -44,7 +45,13 @@ Shader "Hidden/MyTestCopyDepth"
 
             float frag(VertexOutput i) : SV_Depth
             {
-                return tex2D(_CameraDepthTexture, i.uv);
+                float2 uv = i.uv;
+
+                #if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
+					uv.y = 1-uv.y;
+				#endif
+
+                return tex2D(_CameraDepthTexture, uv);
             }
 
             ENDCG
