@@ -113,6 +113,13 @@ public static class SRPPlaygroundPipeline
             CullResults.Cull(ref cullingParams, context, ref cull);
 
             //************************** Cam Properties **********************************
+                // Setup Camera RenderTarget and Viewport
+                // VR Camera Setup and SINGLE_PASS_STEREO props
+                // Setup camera view, proj and their inv matrices.
+                // Setup properties: _WorldSpaceCameraPos, _ProjectionParams, _ScreenParams, _ZBufferParams, unity_OrthoParams
+                // Setup camera world clip planes props
+                // setup HDR keyword
+                // Setup global time properties (_Time, _SinTime, _CosTime)
             context.SetupCameraProperties(camera);
 
             //************************** Lighting Variables  *****************************
