@@ -11,11 +11,10 @@
 	}
 	SubShader
 	{
-		Tags { "RenderType"="Opaque" "LightMode" = "ForwardBase" }
-		LOD 100
-
 		Pass
 		{
+			Tags { "RenderType"="Opaque" "LightMode" = "ForwardBase" }
+
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
@@ -124,7 +123,8 @@
 
 					float shadowCos = dot(wNormal, wLight);
 					float shadowSine = sqrt(1-shadowCos*shadowCos);
-					float normalBias = unity_LightShadowBias.z * shadowSine;
+					//float normalBias = unity_LightShadowBias.z * shadowSine;
+					float normalBias = 0.01f * shadowSine;
 
 					wPos.xyz -= wNormal * normalBias;
 
@@ -136,7 +136,7 @@
  
 			float4 frag(v2f i) : COLOR
 			{
-				return 0;
+				return 0.5;
 			}
  
          	ENDCG
