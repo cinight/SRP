@@ -46,10 +46,11 @@ public static class SRPPlaygroundPipeline
     private static int m_ColorRTid = Shader.PropertyToID("_CameraColorRT");
     private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture");
     private static int m_CopyDepthRTid = Shader.PropertyToID("_CameraCopyDepthTexture");
-    //private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture");
+    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture");
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
     private static RenderTargetIdentifier m_DepthRT = new RenderTargetIdentifier(m_DepthRTid);
     private static RenderTargetIdentifier m_CopyDepthRT = new RenderTargetIdentifier(m_CopyDepthRTid);
+    private static RenderTargetIdentifier m_ShadowMap = new RenderTargetIdentifier(m_ShadowMapid);
     private static Material m_CopyDepthMaterial;
 
     private static RenderTextureFormat m_ColorFormat = RenderTextureFormat.DefaultHDR;
@@ -216,6 +217,9 @@ public static class SRPPlaygroundPipeline
             //Copy depth for _CameraDepthTexture
             cmdTempId.GetTemporaryRT(m_CopyDepthRTid, depthRTDesc,FilterMode.Bilinear);
 
+            //ShadowMap
+            cmdTempId.GetTemporaryRT(m_ShadowMapid, colorRTDesc,FilterMode.Bilinear);
+
             context.ExecuteCommandBuffer(cmdTempId);
             cmdTempId.Release();
 
@@ -359,8 +363,7 @@ public static class SRPPlaygroundPipeline
             cmdclean.ReleaseTemporaryRT(m_ColorRTid);
             cmdclean.ReleaseTemporaryRT(m_DepthRTid);
             cmdclean.ReleaseTemporaryRT(m_CopyDepthRTid);
-            //cmdclean.ReleaseTemporaryRT(m_OpaqueRTid);
-            //cmdclean.ReleaseTemporaryRT(m_ShadowMapid);
+            cmdclean.ReleaseTemporaryRT(m_ShadowMapid);
             context.ExecuteCommandBuffer(cmdclean);
             cmdclean.Release();
 
