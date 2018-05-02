@@ -6,6 +6,7 @@
 		_MainTex ("Texture", 2D) = "white" {}
 		_Smoothness("Smoothness", Range(0, 1)) = 0.5
 		[HDR] _SpecularTint("Specular", Color) = (0.5, 0.5, 0.5)
+		_LightColor("Light Color", Color) = (1,1,1,1)
 		_ShadowColor("Shadow Color", Color) = (1,1,1,1)
 	}
 	SubShader
@@ -43,6 +44,7 @@
 			float4 _SpecularTint;
 			float4 _Color;
 			float4 _ShadowColor;
+			float4 _LightColor;
 			sampler2D _ShadowMapTexture;
 			
 			v2f vert (appdata v)
@@ -72,7 +74,7 @@
 				float3 lightDir = _WorldSpaceLightPos0.xyz;
 				float4 lightColor = _LightColor0;
 				float lightFactor = DotClamped(lightDir, i.normal);
-				float4 light = lerp(  0,lightColor , lightFactor);
+				float4 light = lerp(  0,_LightColor , lightFactor* _LightColor.a) ;
 
 				//Specular
 				float3 halfVector = normalize(lightDir + i.viewDir);
@@ -86,6 +88,7 @@
 
 				col.rgb *= shadow;
 				col.rgb *= 1 - specular.rgb;
+				col.a = 1;
 
 				return col + light + specular;
 			}
