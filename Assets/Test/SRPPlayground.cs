@@ -77,7 +77,7 @@ public static class SRPPlaygroundPipeline
     {
         //For scene view
         if(m_CopyDepthMaterial == null) m_CopyDepthMaterial = new Material(Shader.Find("Hidden/MyTestCopyDepth"));
-        if(m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/My/ScreenSpaceShadows"));
+        if(m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/Internal-ScreenSpaceShadows"));
 
         //************************** SetRenderingFeatures ****************************************
         #if UNITY_EDITOR
@@ -273,9 +273,11 @@ public static class SRPPlaygroundPipeline
             //************************** Shadow Mapping ************************************
             if(doShadow)
             {
-                Matrix4x4[] m_DirectionalShadowMatrices = new Matrix4x4[2];
+                Matrix4x4[] m_DirectionalShadowMatrices = new Matrix4x4[4];
                 m_DirectionalShadowMatrices[0] = Matrix4x4.identity;
-                m_DirectionalShadowMatrices[1] = Matrix4x4.zero;
+                m_DirectionalShadowMatrices[1] = Matrix4x4.identity;
+                m_DirectionalShadowMatrices[2] = Matrix4x4.identity;
+                m_DirectionalShadowMatrices[3] = Matrix4x4.zero;
 
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
                 Matrix4x4 view, proj;
@@ -287,7 +289,7 @@ public static class SRPPlaygroundPipeline
                 CommandBuffer cmdShadow = new CommandBuffer();
                 cmdShadow.name = "("+camera.name+")"+ "Shadow Mapping";
 
-                cmdShadow.SetGlobalMatrixArray("_WorldToShadow", m_DirectionalShadowMatrices);
+                cmdShadow.SetGlobalMatrixArray("unity_WorldToShadow0", m_DirectionalShadowMatrices);
                 cmdShadow.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
 
                 cmdShadow.SetRenderTarget(m_ShadowMapLight);
@@ -311,6 +313,8 @@ public static class SRPPlaygroundPipeline
 
                 cmdShadow2.SetRenderTarget(m_ShadowMap);
                 cmdShadow2.ClearRenderTarget(true, true, Color.white);
+                cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
+
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
 
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
