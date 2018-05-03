@@ -63,6 +63,8 @@ public static class SRPPlaygroundPipeline
     private static RendererConfiguration renderConfig = RendererConfiguration.PerObjectReflectionProbes | 
                                                         RendererConfiguration.PerObjectLightmaps;
 
+    private static int m_ShadowRes = 1024;
+
     private static void ClearFlag(CommandBuffer cmd, Camera cam)
     {
         bool clearcolor = true;
@@ -75,7 +77,7 @@ public static class SRPPlaygroundPipeline
     {
         //For scene view
         if(m_CopyDepthMaterial == null) m_CopyDepthMaterial = new Material(Shader.Find("Hidden/MyTestCopyDepth"));
-        if(m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/LightweightPipeline/ScreenSpaceShadows"));
+        if(m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/My/ScreenSpaceShadows"));
 
         //************************** SetRenderingFeatures ****************************************
         #if UNITY_EDITOR
@@ -127,6 +129,7 @@ public static class SRPPlaygroundPipeline
             cmdLighting.name = "("+camera.name+")"+ "Lighting variable";
             int additionalLightSet = 0;
             int mainLightIndex = -1;
+            Light mainLight = null;
 
             Vector4[] lightPositions = new Vector4[8];
             Vector4[] lightColors = new Vector4[8];
@@ -174,6 +177,8 @@ public static class SRPPlaygroundPipeline
 
                         cmdLighting.SetGlobalVector("_LightColor0", lightColors[0]);
                         cmdLighting.SetGlobalVector("_WorldSpaceLightPos0", lightPositions[0] );
+
+                        mainLight = light.light;
                         mainLightIndex = i;
                     }
                 }
@@ -228,7 +233,7 @@ public static class SRPPlaygroundPipeline
             cmdTempId.GetTemporaryRT(m_CopyDepthRTid, depthRTDesc,FilterMode.Bilinear);
 
             //ShadowMap
-            RenderTextureDescriptor shadowRTDesc = new RenderTextureDescriptor(512,512);
+            RenderTextureDescriptor shadowRTDesc = new RenderTextureDescriptor(m_ShadowRes,m_ShadowRes);
             shadowRTDesc.colorFormat = RenderTextureFormat.Shadowmap;
             shadowRTDesc.depthBufferBits = 32;
             shadowRTDesc.sRGB = true;
@@ -268,17 +273,34 @@ public static class SRPPlaygroundPipeline
             //************************** Shadow Mapping ************************************
             if(doShadow)
             {
+                Matrix4x4[] m_DirectionalShadowMatrices = new Matrix4x4[2];
+                m_DirectionalShadowMatrices[0] = Matrix4x4.identity;
+                m_DirectionalShadowMatrices[1] = Matrix4x4.zero;
+
+                DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
+                Matrix4x4 view, proj;
+                bool success = cull.ComputeDirectionalShadowMatricesAndCullingPrimitives(mainLightIndex,
+                        0, 1, new Vector3(0.067f, 0.2f, 0.467f), 
+                        m_ShadowRes, mainLight.shadowNearPlane, out view, out proj,
+                        out shadowSettings.splitData);
+
                 CommandBuffer cmdShadow = new CommandBuffer();
                 cmdShadow.name = "("+camera.name+")"+ "Shadow Mapping";
 
+                cmdShadow.SetGlobalMatrixArray("_WorldToShadow", m_DirectionalShadowMatrices);
+                cmdShadow.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
+
                 cmdShadow.SetRenderTarget(m_ShadowMapLight);
                 cmdShadow.ClearRenderTarget(true,true,Color.black);
+                cmdShadow.SetViewProjectionMatrices(view, proj);
 
                 context.ExecuteCommandBuffer(cmdShadow);
                 cmdShadow.Release();
 
-                DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
+                //Render Shadow
                 context.DrawShadows(ref shadowSettings);
+                //Reset matrices
+                context.SetupCameraProperties(camera);
             }
 
             //************************** Collect Shadow ************************************
