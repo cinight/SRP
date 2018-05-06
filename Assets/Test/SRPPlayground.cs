@@ -339,21 +339,10 @@ public static class SRPPlaygroundPipeline
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
 
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
-                cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
+                cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
 
                 context.ExecuteCommandBuffer(cmdShadow2);
                 cmdShadow2.Release();
-            }
-
-            //************************** Preview Cam Fix ************************************
-            if (camera.name == "Preview Camera") //So that opaque can render on it
-            {
-                CommandBuffer cmdPreviewCam = new CommandBuffer();
-                cmdPreviewCam.name = "("+camera.name+")"+ "preview camera";
-                    ClearFlag(cmdPreviewCam,camera, camera.backgroundColor);
-                    cmdPreviewCam.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
-                context.ExecuteCommandBuffer(cmdPreviewCam);
-                cmdPreviewCam.Release();
             }
 
             //************************** Clear ************************************
@@ -417,7 +406,7 @@ public static class SRPPlaygroundPipeline
             CommandBuffer cmdDepth = new CommandBuffer();
             cmdDepth.name = "("+camera.name+")"+ "Depth";
 
-            if(camera.cameraType == CameraType.SceneView) m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
+            if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera") m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
                 else m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
             cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
             cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
