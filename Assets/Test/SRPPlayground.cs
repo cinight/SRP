@@ -322,8 +322,8 @@ public static class SRPPlaygroundPipeline
                 cmdShadow2.name = "("+camera.name+")"+ "Screen Space Shadow";
 
                 cmdShadow2.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
-                cmdShadow2.SetRenderTarget(m_ShadowMap);
-                cmdShadow2.ClearRenderTarget(true, true, Color.white);
+                cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
+                cmdShadow2.ClearRenderTarget(false, true, Color.white);
                 
                 //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
 
@@ -333,16 +333,16 @@ public static class SRPPlaygroundPipeline
                 //_LightShadowData.y - Appears to be unused
                 //_LightShadowData.z - 1.0 / shadow far distance
                 //_LightShadowData.w - shadow near distance
-                Vector4 LightShadowData = new Vector4(1, 0, 0.05f, -10f);
-                        //mainLight.shadowStrength,
-                        //0, 1f / (QualitySettings.shadowDistance),
-                       // QualitySettings.shadowNearPlaneOffset);
-                    cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
-                    Matrix4x4 WorldToShadow = view * proj;
-                    cmdShadow2.SetGlobalMatrix("unity_WorldToShadow0", WorldToShadow);
+                Vector4 LightShadowData = new Vector4(
+                    mainLight.shadowStrength,
+                    0, 1f / (QualitySettings.shadowDistance),
+                    QualitySettings.shadowNearPlaneOffset);
+                cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
+                Matrix4x4 WorldToShadow = view * proj;
+                cmdShadow2.SetGlobalMatrix("unity_WorldToShadow0", WorldToShadow);
                 cmdShadow2.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
 
-                cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
+                cmdShadow2.Blit(m_ShadowMap, BuiltinRenderTextureType.CameraTarget, m_ScreenSpaceShadowsMaterial);
 
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
                 cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
@@ -391,7 +391,7 @@ public static class SRPPlaygroundPipeline
                 CommandBuffer cmdpp = new CommandBuffer();
                 cmdpp.name = "("+camera.name+")"+ "Post-processing for Opaque";
 
-                cmdpp.Blit( BuiltinRenderTextureType.CameraTarget, m_ColorRT);
+                //cmdpp.Blit( BuiltinRenderTextureType.CameraTarget, m_ColorRT);
 
                 m_PostProcessRenderContext.Reset();
                 m_PostProcessRenderContext.camera = camera;
