@@ -30,8 +30,13 @@ public class SRPPlaygroundInstance : RenderPipeline
 
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
     {
-        //base.Render(renderContext, cameras);
-        SRPPlaygroundPipeline.Render(renderContext, cameras);
+        Camera[] defaultCameras;
+        Camera[] customCameras;
+
+        SRPDefault.FilterCameras(cameras, out defaultCameras, out customCameras);
+
+        SRPPlaygroundPipeline.Render(renderContext, customCameras);
+        SRPDefault.Render(renderContext, defaultCameras);
     }
 }
 
@@ -231,7 +236,7 @@ public static class SRPPlaygroundPipeline
             //Color
             RenderTextureDescriptor colorRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             colorRTDesc.colorFormat = m_ColorFormat;
-            colorRTDesc.depthBufferBits = depthBufferBits;
+            colorRTDesc.depthBufferBits = 0;
             colorRTDesc.sRGB = true;
             colorRTDesc.msaaSamples = 1;
             colorRTDesc.enableRandomWrite = false;
@@ -249,7 +254,7 @@ public static class SRPPlaygroundPipeline
             //ScreenSpaceShadowMap
             RenderTextureDescriptor shadowMapRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             shadowMapRTDesc.colorFormat = m_ShadowMapFormat;
-            shadowMapRTDesc.depthBufferBits = depthBufferBits;
+            shadowMapRTDesc.depthBufferBits = 0;
             shadowMapRTDesc.sRGB = true;
             shadowMapRTDesc.msaaSamples = 1;
             shadowMapRTDesc.enableRandomWrite = false;
