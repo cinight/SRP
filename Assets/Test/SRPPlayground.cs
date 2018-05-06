@@ -46,8 +46,8 @@ public static class SRPPlaygroundPipeline
     private static int m_ColorRTid = Shader.PropertyToID("_CameraColorRT");
     private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture");
     private static int m_CopyDepthRTid = Shader.PropertyToID("_CameraCopyDepthTexture");
-    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture");
-    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMap"); //The light pov depth
+    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMap");
+    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMapTexture"); //The light pov depth
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
     private static RenderTargetIdentifier m_DepthRT = new RenderTargetIdentifier(m_DepthRTid);
     private static RenderTargetIdentifier m_CopyDepthRT = new RenderTargetIdentifier(m_CopyDepthRTid);
@@ -77,11 +77,12 @@ public static class SRPPlaygroundPipeline
     {
         //For scene view
         if(m_CopyDepthMaterial == null) m_CopyDepthMaterial = new Material(Shader.Find("Hidden/MyTestCopyDepth"));
-        if(m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/Internal-ScreenSpaceShadows"));
+        //if(m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/Internal-ScreenSpaceShadows"));
+        if (m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/MyInternal-ScreenSpaceShadows"));
 
         //************************** SetRenderingFeatures ****************************************
-        #if UNITY_EDITOR
-            SupportedRenderingFeatures.active = new SupportedRenderingFeatures()
+#if UNITY_EDITOR
+        SupportedRenderingFeatures.active = new SupportedRenderingFeatures()
             {
                 reflectionProbeSupportFlags = SupportedRenderingFeatures.ReflectionProbeSupportFlags.None,
                 defaultMixedLightingMode = SupportedRenderingFeatures.LightmapMixedBakeMode.Subtractive,
@@ -122,7 +123,7 @@ public static class SRPPlaygroundPipeline
                 // Setup camera world clip planes props
                 // setup HDR keyword
                 // Setup global time properties (_Time, _SinTime, _CosTime)
-            context.SetupCameraProperties(camera);
+            //context.SetupCameraProperties(camera);
 
             //************************** Lighting Variables  *****************************
             CommandBuffer cmdLighting = new CommandBuffer();
@@ -244,56 +245,29 @@ public static class SRPPlaygroundPipeline
 
             context.ExecuteCommandBuffer(cmdTempId);
             cmdTempId.Release();
-
-            //************************** Depth (for CameraDepthTexture in shader, also shadowmapping) ************************************
-            CommandBuffer cmdDepthOpaque = new CommandBuffer();
-            cmdDepthOpaque.name = "("+camera.name+")"+ "Depth for opaque";
-            
-            cmdDepthOpaque.SetRenderTarget(m_DepthRT);
-            ClearFlag(cmdDepthOpaque,camera);
-
-            context.ExecuteCommandBuffer(cmdDepthOpaque);
-            cmdDepthOpaque.Release();
-
-            // Opaque
-            filterSettings.renderQueueRange = RenderQueueRange.opaque;
-            drawSettingsShadow.sorting.flags = SortFlags.CommonOpaque;
-            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsShadow, filterSettings);
-           
-            CommandBuffer cmdDepthOpaque2 = new CommandBuffer();
-            cmdDepthOpaque2.name = "("+camera.name+")"+ "Depth for opaque 2";
-            cmdDepthOpaque2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
-            context.ExecuteCommandBuffer(cmdDepthOpaque2);
-            cmdDepthOpaque2.Release();
             
             //************************** Do shadow? ************************************
             Bounds bounds;
             bool doShadow = cull.GetShadowCasterBounds(mainLightIndex, out bounds);
+            Matrix4x4 view = Matrix4x4.identity;
+            Matrix4x4 proj = Matrix4x4.identity;
 
-            //************************** Shadow Mapping ************************************
-            if(doShadow)
+
+            //************************** Shadow Mapping ************************************//TO DO, should do shadow first, then depth textue
+            if (doShadow)
             {
-                Matrix4x4[] m_DirectionalShadowMatrices = new Matrix4x4[4];
-                m_DirectionalShadowMatrices[0] = Matrix4x4.identity;
-                m_DirectionalShadowMatrices[1] = Matrix4x4.identity;
-                m_DirectionalShadowMatrices[2] = Matrix4x4.identity;
-                m_DirectionalShadowMatrices[3] = Matrix4x4.zero;
-
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
-                Matrix4x4 view, proj;
+
                 bool success = cull.ComputeDirectionalShadowMatricesAndCullingPrimitives(mainLightIndex,
-                        0, 1, new Vector3(0.067f, 0.2f, 0.467f), 
+                        0, 1, new Vector3(0.05f, 0.2f, 0.3f),
                         m_ShadowRes, mainLight.shadowNearPlane, out view, out proj,
                         out shadowSettings.splitData);
 
                 CommandBuffer cmdShadow = new CommandBuffer();
-                cmdShadow.name = "("+camera.name+")"+ "Shadow Mapping";
-
-                cmdShadow.SetGlobalMatrixArray("unity_WorldToShadow0", m_DirectionalShadowMatrices);
-                cmdShadow.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
+                cmdShadow.name = "(" + camera.name + ")" + "Shadow Mapping";
 
                 cmdShadow.SetRenderTarget(m_ShadowMapLight);
-                cmdShadow.ClearRenderTarget(true,true,Color.black);
+                cmdShadow.ClearRenderTarget(true, true, Color.black);
                 cmdShadow.SetViewProjectionMatrices(view, proj);
 
                 context.ExecuteCommandBuffer(cmdShadow);
@@ -305,15 +279,54 @@ public static class SRPPlaygroundPipeline
                 context.SetupCameraProperties(camera);
             }
 
+            //************************** Depth (for CameraDepthTexture in shader, also shadowmapping) ************************************
+            CommandBuffer cmdDepthOpaque = new CommandBuffer();
+            cmdDepthOpaque.name = "(" + camera.name + ")" + "Depth for opaque";
+
+            cmdDepthOpaque.SetRenderTarget(m_DepthRT);
+            ClearFlag(cmdDepthOpaque, camera);
+
+            context.ExecuteCommandBuffer(cmdDepthOpaque);
+            cmdDepthOpaque.Release();
+
+            // Opaque
+            filterSettings.renderQueueRange = RenderQueueRange.opaque;
+            drawSettingsShadow.sorting.flags = SortFlags.CommonOpaque;
+            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsShadow, filterSettings);
+
+            CommandBuffer cmdDepthOpaque2 = new CommandBuffer();
+            cmdDepthOpaque2.name = "(" + camera.name + ")" + "Depth for opaque 2";
+            cmdDepthOpaque2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
+            context.ExecuteCommandBuffer(cmdDepthOpaque2);
+            cmdDepthOpaque2.Release();
+
             //************************** Collect Shadow ************************************
-            if(doShadow)
+            if (doShadow)
             {
                 CommandBuffer cmdShadow2 = new CommandBuffer();
                 cmdShadow2.name = "("+camera.name+")"+ "Shadow2";
 
-                cmdShadow2.SetRenderTarget(m_ShadowMap);
+                cmdShadow2.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
+                cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
                 cmdShadow2.ClearRenderTarget(true, true, Color.white);
-                cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
+                
+
+                //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
+
+                //Setup shadow variables
+
+                //_LightShadowData.x - shadow strength
+                //_LightShadowData.y - Appears to be unused
+                //_LightShadowData.z - 1.0 / shadow far distance
+                //_LightShadowData.w - shadow near distance
+                Vector4 LightShadowData = new Vector4(1, 0, 0.05f, -10f);
+                        //mainLight.shadowStrength,
+                        //0, 1f / (QualitySettings.shadowDistance),
+                       // QualitySettings.shadowNearPlaneOffset);
+                    cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
+                    Matrix4x4 WorldToShadow = view * proj;
+                    cmdShadow2.SetGlobalMatrix("unity_WorldToShadow0", WorldToShadow);
+                cmdShadow2.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
 
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
 

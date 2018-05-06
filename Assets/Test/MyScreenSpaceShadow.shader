@@ -35,9 +35,9 @@ Shader "Hidden/My/ScreenSpaceShadows"
             return o;
         }
 
-        float4x4  _WorldToShadow[2]; //only directional light, and one for avoid issue
+        float4x4  _WorldToShadow; //only directional light, and one for avoid issue
         half _ShadowStrength;
-        sampler2D _ShadowMap;
+        sampler2D _MyShadowMap;
         sampler2D _CameraDepthTexture;
 
         half4 Fragment(Interpolators i) : SV_Target
@@ -63,11 +63,11 @@ Shader "Hidden/My/ScreenSpaceShadows"
             float3 wpos = mul(unity_CameraToWorld, float4(vpos, 1)).xyz;
 
             //Fetch shadow coordinates for cascade.
-            float4 coords  = mul(_WorldToShadow[0], float4(wpos, 1.0)); //no cascade
+            float4 coords  = mul(_WorldToShadow, float4(wpos, 1.0)); //no cascade
 
             // Screenspace shadowmap is only used for directional lights which use orthogonal projection.
             coords.xyz /= coords.w;
-            float attenuation = tex2D(_ShadowMap, coords.xy).r; //textureName.SampleCmpLevelZero(samplerName, (coord3).xy, (coord3).z)
+            float attenuation = tex2D(_MyShadowMap, coords.xy).r; //textureName.SampleCmpLevelZero(samplerName, (coord3).xy, (coord3).z)
             float oneMinusT = 1.0 - _ShadowStrength;
             attenuation = oneMinusT + attenuation * _ShadowStrength;
 
