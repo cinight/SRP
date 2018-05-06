@@ -286,9 +286,10 @@ public static class SRPPlaygroundPipeline
 
                 //Render Shadow
                 context.DrawShadows(ref shadowSettings);
-                //Reset matrices
-                context.SetupCameraProperties(camera);
             }
+
+            //************************** Camera Parameters ************************************
+            context.SetupCameraProperties(camera);
 
             //************************** Depth (for CameraDepthTexture in shader, also shadowmapping) ************************************
             CommandBuffer cmdDepthOpaque = new CommandBuffer();
