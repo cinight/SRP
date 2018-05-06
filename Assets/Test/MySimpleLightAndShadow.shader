@@ -136,7 +136,7 @@
  
 			float4 frag(v2f i) : COLOR
 			{
-				return 0.5;
+				return 0;
 			}
  
          	ENDCG

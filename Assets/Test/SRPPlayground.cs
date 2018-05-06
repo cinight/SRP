@@ -37,51 +37,64 @@ public class SRPPlaygroundInstance : RenderPipeline
 
 public static class SRPPlaygroundPipeline
 {
+    //Pass Names
     private static readonly ShaderPassName m_UnlitPassName = new ShaderPassName("SRPDefaultUnlit");
     private static ShaderPassName passNameDefault = new ShaderPassName("");
     private static ShaderPassName passNameBase = new ShaderPassName("ForwardBase");
     private static ShaderPassName passNameAdd = new ShaderPassName("ForwardAdd");
     private static ShaderPassName passNameShadow = new ShaderPassName("ShadowCaster");
 
+    //Shader Properties
     private static int m_ColorRTid = Shader.PropertyToID("_CameraColorRT");
-    private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture");
+    private static int m_GrabOpaqueRTid = Shader.PropertyToID("_GrabOpaqueTexture"); //Use in shader, for grab pass
+    private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture"); //Use in shader, for soft particle
     private static int m_CopyDepthRTid = Shader.PropertyToID("_CameraCopyDepthTexture");
-    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMap");
-    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMapTexture"); //The light pov depth
+    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMap"); //Use in shader, for screen-space shadow
+    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMapTexture");
+
+    //Render Targets
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
     private static RenderTargetIdentifier m_DepthRT = new RenderTargetIdentifier(m_DepthRTid);
     private static RenderTargetIdentifier m_CopyDepthRT = new RenderTargetIdentifier(m_CopyDepthRTid);
     private static RenderTargetIdentifier m_ShadowMap = new RenderTargetIdentifier(m_ShadowMapid);
     private static RenderTargetIdentifier m_ShadowMapLight = new RenderTargetIdentifier(m_ShadowMapLightid);
+
+    //Blit Materials
     private static Material m_CopyDepthMaterial;
     private static Material m_ScreenSpaceShadowsMaterial;
 
+    //Constants
     private static RenderTextureFormat m_ColorFormat = RenderTextureFormat.DefaultHDR;
+    private static RenderTextureFormat m_DepthFormat = RenderTextureFormat.Depth;
+    private static RenderTextureFormat m_ShadowFormat = RenderTextureFormat.Shadowmap;
+    private static RenderTextureFormat m_ShadowMapFormat = RenderTextureFormat.ARGB32;
+    private static int depthBufferBits = 32;
+    private static int m_ShadowRes = 1024;
+
+    //Misc
     private static PostProcessRenderContext m_PostProcessRenderContext = new PostProcessRenderContext();
     private static PostProcessLayer m_CameraPostProcessLayer;
-
     private static RendererConfiguration renderConfig = RendererConfiguration.PerObjectReflectionProbes | 
                                                         RendererConfiguration.PerObjectLightmaps;
 
-    private static int m_ShadowRes = 1024;
-
-    private static void ClearFlag(CommandBuffer cmd, Camera cam)
+    //Easy ClearRenderTarget
+    private static void ClearFlag(CommandBuffer cmd, Camera cam, Color color)
     {
         bool clearcolor = true;
         bool cleardepth = true;
         if( cam.clearFlags == CameraClearFlags.Skybox || cam.clearFlags == CameraClearFlags.Depth ) {clearcolor = false;}
-        cmd.ClearRenderTarget(cleardepth, clearcolor, cam.backgroundColor);
+        cmd.ClearRenderTarget(cleardepth, clearcolor, color);
     }
 
+    //Starts Rendering Part
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
-        //For scene view
-        if(m_CopyDepthMaterial == null) m_CopyDepthMaterial = new Material(Shader.Find("Hidden/MyTestCopyDepth"));
-        //if(m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/Internal-ScreenSpaceShadows"));
-        if (m_ScreenSpaceShadowsMaterial == null) m_ScreenSpaceShadowsMaterial = new Material(Shader.Find("Hidden/MyInternal-ScreenSpaceShadows"));
+        //************************** Create Blit Materials ****************************************
+        if ( m_CopyDepthMaterial == null ) m_CopyDepthMaterial = new Material ( Shader.Find ( "Hidden/MyTestCopyDepth" ) );
+        if ( m_ScreenSpaceShadowsMaterial == null ) m_ScreenSpaceShadowsMaterial = new Material ( Shader.Find ( "Hidden/MyInternal-ScreenSpaceShadows" ) );
 
-        //************************** SetRenderingFeatures ****************************************
-#if UNITY_EDITOR
+        //************************** Set Rendering Features ****************************************
+        #if UNITY_EDITOR
         SupportedRenderingFeatures.active = new SupportedRenderingFeatures()
             {
                 reflectionProbeSupportFlags = SupportedRenderingFeatures.ReflectionProbeSupportFlags.None,
@@ -97,11 +110,9 @@ public static class SRPPlaygroundPipeline
             SceneViewDrawMode.SetupDrawMode();
         #endif
 
-        // //////////////////////////////////////////////////////////////////////////////////
+        // //////////////////////////////////// START EACH CAMERA RENDERING //////////////////////////////////////////////
         foreach (Camera camera in cameras)
         {
-            camera.depthTextureMode = DepthTextureMode.Depth;
-
             //************************** UGUI Geometry on scene view *************************
             #if UNITY_EDITOR
                  if (camera.cameraType == CameraType.SceneView)
@@ -114,16 +125,6 @@ public static class SRPPlaygroundPipeline
                 continue;
             CullResults cull = new CullResults();
             CullResults.Cull(ref cullingParams, context, ref cull);
-
-            //************************** Cam Properties **********************************
-                // Setup Camera RenderTarget and Viewport
-                // VR Camera Setup and SINGLE_PASS_STEREO props
-                // Setup camera view, proj and their inv matrices.
-                // Setup properties: _WorldSpaceCameraPos, _ProjectionParams, _ScreenParams, _ZBufferParams, unity_OrthoParams
-                // Setup camera world clip planes props
-                // setup HDR keyword
-                // Setup global time properties (_Time, _SinTime, _CosTime)
-            //context.SetupCameraProperties(camera);
 
             //************************** Lighting Variables  *****************************
             CommandBuffer cmdLighting = new CommandBuffer();
@@ -207,9 +208,12 @@ public static class SRPPlaygroundPipeline
 
             DrawRendererSettings drawSettingsBase = new DrawRendererSettings(camera, passNameBase);
                 drawSettingsBase.rendererConfiguration = renderConfig;
+
             DrawRendererSettings drawSettingsAdd = new DrawRendererSettings(camera, passNameAdd);
                 drawSettingsAdd.rendererConfiguration = renderConfig;
+
             DrawRendererSettings drawSettingsShadow = new DrawRendererSettings(camera, passNameShadow);
+                //drawSettingsAdd.rendererConfiguration = renderConfig;
 
             //************************** Set TempRT ************************************
             CommandBuffer cmdTempId = new CommandBuffer();
@@ -217,31 +221,39 @@ public static class SRPPlaygroundPipeline
 
             //Depth
             RenderTextureDescriptor depthRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
-            depthRTDesc.colorFormat = RenderTextureFormat.Depth;
-            depthRTDesc.depthBufferBits = 32;
+            depthRTDesc.colorFormat = m_DepthFormat;
+            depthRTDesc.depthBufferBits = depthBufferBits;
             cmdTempId.GetTemporaryRT(m_DepthRTid, depthRTDesc,FilterMode.Bilinear);
+
+            //Copy depth for _CameraDepthTexture
+            cmdTempId.GetTemporaryRT(m_CopyDepthRTid, depthRTDesc, FilterMode.Bilinear);
 
             //Color
             RenderTextureDescriptor colorRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             colorRTDesc.colorFormat = m_ColorFormat;
-            colorRTDesc.depthBufferBits = 32; // TODO: does the color RT always need depth?
+            colorRTDesc.depthBufferBits = depthBufferBits;
             colorRTDesc.sRGB = true;
             colorRTDesc.msaaSamples = 1;
             colorRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ColorRTid, colorRTDesc,FilterMode.Bilinear);
 
-            //Copy depth for _CameraDepthTexture
-            cmdTempId.GetTemporaryRT(m_CopyDepthRTid, depthRTDesc,FilterMode.Bilinear);
-
-            //ShadowMap
+            //Shadow
             RenderTextureDescriptor shadowRTDesc = new RenderTextureDescriptor(m_ShadowRes,m_ShadowRes);
-            shadowRTDesc.colorFormat = RenderTextureFormat.Shadowmap;
-            shadowRTDesc.depthBufferBits = 32;
+            shadowRTDesc.colorFormat = m_ShadowFormat;
+            shadowRTDesc.depthBufferBits = depthBufferBits;
             shadowRTDesc.sRGB = true;
             shadowRTDesc.msaaSamples = 1;
             shadowRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ShadowMapLightid, shadowRTDesc,FilterMode.Bilinear);//depth per light
-            cmdTempId.GetTemporaryRT(m_ShadowMapid, colorRTDesc,FilterMode.Bilinear);//screen space shadow
+
+            //ScreenSpaceShadowMap
+            RenderTextureDescriptor shadowMapRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
+            shadowMapRTDesc.colorFormat = m_ShadowMapFormat;
+            shadowMapRTDesc.depthBufferBits = depthBufferBits;
+            shadowMapRTDesc.sRGB = true;
+            shadowMapRTDesc.msaaSamples = 1;
+            shadowMapRTDesc.enableRandomWrite = false;
+            cmdTempId.GetTemporaryRT(m_ShadowMapid, shadowMapRTDesc, FilterMode.Bilinear);//screen space shadow
 
             context.ExecuteCommandBuffer(cmdTempId);
             cmdTempId.Release();
@@ -252,8 +264,7 @@ public static class SRPPlaygroundPipeline
             Matrix4x4 view = Matrix4x4.identity;
             Matrix4x4 proj = Matrix4x4.identity;
 
-
-            //************************** Shadow Mapping ************************************//TO DO, should do shadow first, then depth textue
+            //************************** Shadow Mapping ************************************
             if (doShadow)
             {
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
@@ -281,11 +292,9 @@ public static class SRPPlaygroundPipeline
 
             //************************** Depth (for CameraDepthTexture in shader, also shadowmapping) ************************************
             CommandBuffer cmdDepthOpaque = new CommandBuffer();
-            cmdDepthOpaque.name = "(" + camera.name + ")" + "Depth for opaque";
-
-            cmdDepthOpaque.SetRenderTarget(m_DepthRT);
-            ClearFlag(cmdDepthOpaque, camera);
-
+            cmdDepthOpaque.name = "(" + camera.name + ")" + "Before Depth";
+                cmdDepthOpaque.SetRenderTarget(m_DepthRT);
+                ClearFlag(cmdDepthOpaque, camera, Color.black);
             context.ExecuteCommandBuffer(cmdDepthOpaque);
             cmdDepthOpaque.Release();
 
@@ -295,8 +304,8 @@ public static class SRPPlaygroundPipeline
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsShadow, filterSettings);
 
             CommandBuffer cmdDepthOpaque2 = new CommandBuffer();
-            cmdDepthOpaque2.name = "(" + camera.name + ")" + "Depth for opaque 2";
-            cmdDepthOpaque2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
+            cmdDepthOpaque2.name = "(" + camera.name + ")" + "After Depth";
+                cmdDepthOpaque2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
             context.ExecuteCommandBuffer(cmdDepthOpaque2);
             cmdDepthOpaque2.Release();
 
@@ -304,13 +313,12 @@ public static class SRPPlaygroundPipeline
             if (doShadow)
             {
                 CommandBuffer cmdShadow2 = new CommandBuffer();
-                cmdShadow2.name = "("+camera.name+")"+ "Shadow2";
+                cmdShadow2.name = "("+camera.name+")"+ "Screen Space Shadow";
 
                 cmdShadow2.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
-                cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
+                cmdShadow2.SetRenderTarget(m_ShadowMap);
                 cmdShadow2.ClearRenderTarget(true, true, Color.white);
                 
-
                 //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
 
                 //Setup shadow variables
@@ -337,21 +345,21 @@ public static class SRPPlaygroundPipeline
                 cmdShadow2.Release();
             }
 
-            //************************** Preview Cam ************************************
+            //************************** Preview Cam Fix ************************************
             if (camera.name == "Preview Camera") //So that opaque can render on it
             {
                 CommandBuffer cmdPreviewCam = new CommandBuffer();
                 cmdPreviewCam.name = "("+camera.name+")"+ "preview camera";
-                ClearFlag(cmdPreviewCam,camera);
+                    ClearFlag(cmdPreviewCam,camera, camera.backgroundColor);
                     cmdPreviewCam.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
                 context.ExecuteCommandBuffer(cmdPreviewCam);
                 cmdPreviewCam.Release();
             }
 
-            //************************** Clear Flags  ************************************
+            //************************** Clear ************************************
             CommandBuffer cmd = new CommandBuffer();
             cmd.name = "("+camera.name+")"+ "Clear Flag";
-            ClearFlag(cmd, camera);
+                ClearFlag(cmd, camera, camera.backgroundColor);
             context.ExecuteCommandBuffer(cmd);
             cmd.Release();
 
@@ -360,13 +368,13 @@ public static class SRPPlaygroundPipeline
 
             //************************** Opaque ************************************
             filterSettings.renderQueueRange = RenderQueueRange.opaque;
-            // Draw OPAQUE objects using DEFAULT pass
+            // DEFAULT pass, draw shaders without a pass name
             drawSettingsDefault.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsDefault, filterSettings);
-            // Draw OPAQUE objects using BASE pass
+            // BASE pass
             drawSettingsBase.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
-            // Draw OPAQUE objects using ADD pass
+            // ADD pass
             drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
@@ -375,7 +383,7 @@ public static class SRPPlaygroundPipeline
             cmdGrab.name = "("+camera.name+")"+ "Grab Opaque";
 
             cmdGrab.Blit(BuiltinRenderTextureType.CameraTarget, m_ColorRT);
-            cmdGrab.SetGlobalTexture("_GrabOpaqueTexture", m_ColorRT);
+            cmdGrab.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
 
             context.ExecuteCommandBuffer(cmdGrab);
             cmdGrab.Release();
@@ -405,12 +413,12 @@ public static class SRPPlaygroundPipeline
                 cmdpp.Release();
             }
 
-            //************************** Depth texture ************************************
+            //************************** CameraDepthTexture ************************************
             CommandBuffer cmdDepth = new CommandBuffer();
             cmdDepth.name = "("+camera.name+")"+ "Depth";
 
             if(camera.cameraType == CameraType.SceneView) m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
-            else m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
+                else m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
             cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
             cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
             cmdDepth.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
@@ -418,7 +426,7 @@ public static class SRPPlaygroundPipeline
             context.ExecuteCommandBuffer(cmdDepth);
             cmdDepth.Release();
 
-            //************************** Scene View & Preview Cam ************************************
+            //************************** Scene View & Preview Cam Fix ************************************
             #if UNITY_EDITOR
                 if (camera.cameraType == CameraType.SceneView) //Copy depth to scene view camera, so that gizmo and grid will appear
                 {
@@ -441,15 +449,15 @@ public static class SRPPlaygroundPipeline
             //************************** Transparent ************************************
             filterSettings.renderQueueRange = RenderQueueRange.transparent;
 
-            // Draw TRANSPARENT objects using DEFAULT pass
+            // DEFAULT pass
             drawSettingsDefault.sorting.flags = SortFlags.CommonTransparent;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsDefault, filterSettings);
 
-            // Draw TRANSPARENT objects using BASE pass
+            // BASE pass
             drawSettingsBase.sorting.flags = SortFlags.CommonTransparent;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
 
-            // Draw TRANSPARENT objects using ADD pass
+            // ADD pass
             drawSettingsAdd.sorting.flags = SortFlags.CommonTransparent;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
