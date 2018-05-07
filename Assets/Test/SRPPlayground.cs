@@ -96,7 +96,7 @@ public static class SRPPlaygroundPipeline
     {
         //************************** Create Blit Materials ****************************************
         if ( m_CopyDepthMaterial == null ) m_CopyDepthMaterial = new Material ( Shader.Find ( "Hidden/MyTestCopyDepth" ) );
-        if ( m_ScreenSpaceShadowsMaterial == null ) m_ScreenSpaceShadowsMaterial = new Material ( Shader.Find ( "Hidden/MyInternal-ScreenSpaceShadows" ) );
+        if ( m_ScreenSpaceShadowsMaterial == null ) m_ScreenSpaceShadowsMaterial = new Material ( Shader.Find ("Hidden/Internal-ScreenSpaceShadows") );
 
         //************************** Set Rendering Features ****************************************
         #if UNITY_EDITOR
@@ -163,8 +163,7 @@ public static class SRPPlaygroundPipeline
                         Vector4 dir = light.localToWorld.GetColumn(2);
                         lightPositions[0] = new Vector4(-dir.x, -dir.y, -dir.z, 0);
                         lightColors[0] = light.light.color;
-
-                        /*
+                        
                         float lightRangeSqr = light.range * light.range;
                         float fadeStartDistanceSqr = 0.8f * 0.8f * lightRangeSqr;
                         float fadeRangeSqr = (fadeStartDistanceSqr - lightRangeSqr);
@@ -181,7 +180,6 @@ public static class SRPPlaygroundPipeline
                         // Used when subtractive mode is selected
                         Shader.SetGlobalVector("_SubtractiveShadowColor", CoreUtils.ConvertSRGBToActiveColorSpace(RenderSettings.subtractiveShadowColor));
                         */
-
                         cmdLighting.SetGlobalVector("_LightColor0", lightColors[0]);
                         cmdLighting.SetGlobalVector("_WorldSpaceLightPos0", lightPositions[0] );
 
@@ -237,7 +235,7 @@ public static class SRPPlaygroundPipeline
             RenderTextureDescriptor colorRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             colorRTDesc.colorFormat = m_ColorFormat;
             colorRTDesc.depthBufferBits = 0;
-            colorRTDesc.sRGB = true;
+            //colorRTDesc.sRGB = true;
             colorRTDesc.msaaSamples = 1;
             colorRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ColorRTid, colorRTDesc,FilterMode.Bilinear);
@@ -246,7 +244,7 @@ public static class SRPPlaygroundPipeline
             RenderTextureDescriptor shadowRTDesc = new RenderTextureDescriptor(m_ShadowRes,m_ShadowRes);
             shadowRTDesc.colorFormat = m_ShadowFormat;
             shadowRTDesc.depthBufferBits = depthBufferBits;
-            shadowRTDesc.sRGB = true;
+            //shadowRTDesc.sRGB = true;
             shadowRTDesc.msaaSamples = 1;
             shadowRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ShadowMapLightid, shadowRTDesc,FilterMode.Bilinear);//depth per light
@@ -255,14 +253,14 @@ public static class SRPPlaygroundPipeline
             RenderTextureDescriptor shadowMapRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             shadowMapRTDesc.colorFormat = m_ShadowMapFormat;
             shadowMapRTDesc.depthBufferBits = 0;
-            shadowMapRTDesc.sRGB = true;
+            //shadowMapRTDesc.sRGB = true;
             shadowMapRTDesc.msaaSamples = 1;
             shadowMapRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ShadowMapid, shadowMapRTDesc, FilterMode.Bilinear);//screen space shadow
 
             context.ExecuteCommandBuffer(cmdTempId);
             cmdTempId.Release();
-            
+
             //************************** Do shadow? ************************************
             Bounds bounds;
             bool doShadow = cull.GetShadowCasterBounds(mainLightIndex, out bounds);
@@ -284,13 +282,37 @@ public static class SRPPlaygroundPipeline
 
                 cmdShadow.SetRenderTarget(m_ShadowMapLight);
                 cmdShadow.ClearRenderTarget(true, true, Color.black);
+
+                cmdShadow.SetViewport(new Rect(0, 0, m_ShadowRes, m_ShadowRes));
+                cmdShadow.EnableScissorRect(new Rect(4, 4, m_ShadowRes - 8, m_ShadowRes - 8));
                 cmdShadow.SetViewProjectionMatrices(view, proj);
 
+
+                Light light = mainLight;
+                float bias = 0.0f;
+                float normalBias = 0.0f;
+                const float kernelRadius = 3.65f;
+                float sign = (SystemInfo.usesReversedZBuffer) ? 1.0f : -1.0f;
+                bias = light.shadowBias * proj.m22 * sign;
+                double frustumWidth = 2.0 / (double)proj.m00;
+                double frustumHeight = 2.0 / (double)proj.m11;
+                float texelSizeX = (float)(frustumWidth / (double)m_ShadowRes);
+                float texelSizeY = (float)(frustumHeight / (double)m_ShadowRes);
+                float texelSize = Mathf.Max(texelSizeX, texelSizeY);
+                normalBias = -light.shadowNormalBias * texelSize * kernelRadius;
+                cmdShadow.SetGlobalVector("unity_LightShadowBias", new Vector4(bias, normalBias, 0.0f, 0.0f));
+
+
                 context.ExecuteCommandBuffer(cmdShadow);
-                cmdShadow.Release();
+                cmdShadow.Clear();
 
                 //Render Shadow
                 context.DrawShadows(ref shadowSettings);
+
+                cmdShadow.DisableScissorRect();
+                context.ExecuteCommandBuffer(cmdShadow);
+                cmdShadow.Clear();
+                cmdShadow.Release();
             }
 
             //************************** Camera Parameters ************************************
@@ -327,65 +349,39 @@ public static class SRPPlaygroundPipeline
 
                 cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
                 cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
+
                 //Setup shadow variables
-
-
-
-
-
-
-
-
-
-
-
-                //_LightShadowData.x - shadow strength
-                //_LightShadowData.y - Appears to be unused
-                //_LightShadowData.z - 1.0 / shadow far distance
-                //_LightShadowData.w - shadow near distance
-                Vector4 LightShadowData = new Vector4( 0, mainLight.shadowStrength, 0.22f, -2.7f);
-                //mainLight.shadowStrength    
-                //0, 1f / (QualitySettings.shadowDistance),
-                //QualitySettings.shadowNearPlaneOffset);
+                Vector4 LightShadowData = new Vector4(0,1,0.22f,-2.7f);
                 cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
-
-                float sign = (SystemInfo.usesReversedZBuffer) ? 1.0f : -1.0f;
-                float bias = 0.0f;
-                float normalBias = 0.0f;
-                const float kernelRadius = 3.65f;
-                bias = mainLight.shadowBias * proj.m22 * sign;
-
-                double frustumWidth = 2.0 / (double)proj.m00;
-                double frustumHeight = 2.0 / (double)proj.m11;
-                float texelSizeX = (float)(frustumWidth / (double)m_ShadowRes);
-                float texelSizeY = (float)(frustumHeight / (double)m_ShadowRes);
-                float texelSize = Mathf.Max(texelSizeX, texelSizeY);
-
-                normalBias = -mainLight.shadowNormalBias * texelSize * kernelRadius;
-                /*
+                
                 if (SystemInfo.usesReversedZBuffer)
                 {
+                    /*
+                    proj.m20 = -proj.m20/2f;
+                    proj.m21 = -proj.m21/2f;
+                    proj.m22 = -proj.m22/2f;
+                    proj.m23 = -proj.m23/4f;*/
+
                     proj.m20 = -proj.m20;
                     proj.m21 = -proj.m21;
                     proj.m22 = -proj.m22;
                     proj.m23 = -proj.m23;
-                }*/
-
-                Matrix4x4 WorldToShadow = proj * view;
-                //WorldToShadow *= mainLight.transform.worldToLocalMatrix;
+                }
                 
+                Matrix4x4 WorldToShadow = proj * view;
+
+                float f = 0.5f;
+
                 var textureScaleAndBias = Matrix4x4.identity;
-                textureScaleAndBias.m00 = 0.5f;
-                textureScaleAndBias.m11 = 0.5f;
-                textureScaleAndBias.m22 = 0.5f;
-                textureScaleAndBias.m03 = 0.5f;
-                textureScaleAndBias.m23 = 0.5f;
-                textureScaleAndBias.m13 = 0.5f;
-
-
+                textureScaleAndBias.m00 = f;
+                textureScaleAndBias.m11 = f;
+                textureScaleAndBias.m22 = f;
+                textureScaleAndBias.m03 = f;
+                textureScaleAndBias.m23 = f;
+                textureScaleAndBias.m13 = f;
 
                 WorldToShadow = textureScaleAndBias * WorldToShadow;
-
+                
 
 
                 cmdShadow2.SetGlobalMatrix("unity_WorldToShadow0", WorldToShadow);
