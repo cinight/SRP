@@ -74,7 +74,7 @@ public static class SRPPlaygroundPipeline
     private static RenderTextureFormat m_ShadowFormat = RenderTextureFormat.Shadowmap;
     private static RenderTextureFormat m_ShadowMapFormat = RenderTextureFormat.ARGB32;
     private static int depthBufferBits = 32;
-    private static int m_ShadowRes = 1024;
+    private static int m_ShadowRes = 2048;
 
     //Misc
     private static PostProcessRenderContext m_PostProcessRenderContext = new PostProcessRenderContext();
@@ -275,7 +275,7 @@ public static class SRPPlaygroundPipeline
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
 
                 bool success = cull.ComputeDirectionalShadowMatricesAndCullingPrimitives(mainLightIndex,
-                        0, 1, new Vector3(0.05f, 0.2f, 0.3f),
+                        0, 1, new Vector3(1,0,0),
                         m_ShadowRes, mainLight.shadowNearPlane, out view, out proj,
                         out shadowSettings.splitData);
 
@@ -324,21 +324,70 @@ public static class SRPPlaygroundPipeline
                 cmdShadow2.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
                 cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
                 cmdShadow2.ClearRenderTarget(false, true, Color.white);
-                
-                //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
 
+                cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
+                cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
                 //Setup shadow variables
+
+
+
+
+
+
+
+
+
+
 
                 //_LightShadowData.x - shadow strength
                 //_LightShadowData.y - Appears to be unused
                 //_LightShadowData.z - 1.0 / shadow far distance
                 //_LightShadowData.w - shadow near distance
-                Vector4 LightShadowData = new Vector4(
-                    mainLight.shadowStrength,
-                    0, 1f / (QualitySettings.shadowDistance),
-                    QualitySettings.shadowNearPlaneOffset);
+                Vector4 LightShadowData = new Vector4( 0, mainLight.shadowStrength, 0.22f, -2.7f);
+                //mainLight.shadowStrength    
+                //0, 1f / (QualitySettings.shadowDistance),
+                //QualitySettings.shadowNearPlaneOffset);
                 cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
-                Matrix4x4 WorldToShadow = view * proj;
+
+                float sign = (SystemInfo.usesReversedZBuffer) ? 1.0f : -1.0f;
+                float bias = 0.0f;
+                float normalBias = 0.0f;
+                const float kernelRadius = 3.65f;
+                bias = mainLight.shadowBias * proj.m22 * sign;
+
+                double frustumWidth = 2.0 / (double)proj.m00;
+                double frustumHeight = 2.0 / (double)proj.m11;
+                float texelSizeX = (float)(frustumWidth / (double)m_ShadowRes);
+                float texelSizeY = (float)(frustumHeight / (double)m_ShadowRes);
+                float texelSize = Mathf.Max(texelSizeX, texelSizeY);
+
+                normalBias = -mainLight.shadowNormalBias * texelSize * kernelRadius;
+                /*
+                if (SystemInfo.usesReversedZBuffer)
+                {
+                    proj.m20 = -proj.m20;
+                    proj.m21 = -proj.m21;
+                    proj.m22 = -proj.m22;
+                    proj.m23 = -proj.m23;
+                }*/
+
+                Matrix4x4 WorldToShadow = proj * view;
+                //WorldToShadow *= mainLight.transform.worldToLocalMatrix;
+                
+                var textureScaleAndBias = Matrix4x4.identity;
+                textureScaleAndBias.m00 = 0.5f;
+                textureScaleAndBias.m11 = 0.5f;
+                textureScaleAndBias.m22 = 0.5f;
+                textureScaleAndBias.m03 = 0.5f;
+                textureScaleAndBias.m23 = 0.5f;
+                textureScaleAndBias.m13 = 0.5f;
+
+
+
+                WorldToShadow = textureScaleAndBias * WorldToShadow;
+
+
+
                 cmdShadow2.SetGlobalMatrix("unity_WorldToShadow0", WorldToShadow);
                 cmdShadow2.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
 

@@ -11,8 +11,7 @@ Shader "Hidden/MyInternal-ScreenSpaceShadows"
 	CGINCLUDE
 
 		UNITY_DECLARE_SHADOWMAP(_ShadowMapTexture);
-		float4 _ShadowMapTexture_TexelSize;
-		#define SHADOWMAPSAMPLER_AND_TEXELSIZE_DEFINED
+
 
 		#include "UnityCG.cginc"
 		#include "UnityShadowLibrary.cginc"
@@ -117,11 +116,6 @@ Shader "Hidden/MyInternal-ScreenSpaceShadows"
 				vpos = computeCameraSpacePosFromDepth(i);
 				wpos = mul (unity_CameraToWorld, float4(vpos,1));
 
-
-				fixed4 zNear = float4(vpos.z >= _LightSplitsNear);
-				fixed4 zFar = float4(vpos.z < _LightSplitsFar);
-				fixed4 cascadeWeights = zNear * zFar;
-
 				float4 shadowCoord = float4(mul(unity_WorldToShadow[0], wpos).xyz, 0);
 
 				//1 tap hard shadow
@@ -129,7 +123,8 @@ Shader "Hidden/MyInternal-ScreenSpaceShadows"
 				shadow = lerp(_LightShadowData.r, 1.0, shadow);
 
 				fixed4 res = shadow;
-				return res;
+
+					return res;
 			}
 
 			ENDCG
