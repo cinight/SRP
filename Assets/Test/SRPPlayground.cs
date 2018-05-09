@@ -334,6 +334,13 @@ public static class SRPPlaygroundPipeline
             CommandBuffer cmdDepthOpaque2 = new CommandBuffer();
             cmdDepthOpaque2.name = "(" + camera.name + ")" + "After Depth";
                 
+
+            if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera" || !SystemInfo.graphicsUVStartsAtTop) 
+                cmdDepthOpaque2.EnableShaderKeyword ("_FLIPUV"); //m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
+                else 
+                cmdDepthOpaque2.DisableShaderKeyword ("_FLIPUV");//m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
+
+
                 cmdDepthOpaque2.SetGlobalTexture(m_DepthRTid, m_DepthRT);
                 cmdDepthOpaque2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
             context.ExecuteCommandBuffer(cmdDepthOpaque2);
@@ -452,27 +459,11 @@ public static class SRPPlaygroundPipeline
                 m_CameraPostProcessLayer.Render(m_PostProcessRenderContext);
 
                 cmdpp.Blit(m_ColorRT,BuiltinRenderTextureType.CameraTarget);
+                cmdpp.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
                 
                 context.ExecuteCommandBuffer(cmdpp);
                 cmdpp.Release();
             }
-
-            //************************** CameraDepthTexture ************************************
-            CommandBuffer cmdDepth = new CommandBuffer();
-            cmdDepth.name = "("+camera.name+")"+ "Depth";
-
-
-            if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera" || !SystemInfo.graphicsUVStartsAtTop) 
-                cmdDepth.EnableShaderKeyword ("_FLIPUV"); //m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
-                else 
-                cmdDepth.DisableShaderKeyword ("_FLIPUV");//m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
-
-            //cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
-            //cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
-            cmdDepth.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
-
-            context.ExecuteCommandBuffer(cmdDepth);
-            cmdDepth.Release();
 
             //************************** Scene View & Preview Cam Fix ************************************
             #if UNITY_EDITOR
