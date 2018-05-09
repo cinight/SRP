@@ -37,6 +37,9 @@ public class SRPPlaygroundInstance : RenderPipeline
 
         SRPPlaygroundPipeline.Render(renderContext, customCameras);
         SRPDefault.Render(renderContext, defaultCameras);
+
+
+            //bool uiCam = camera.gameObject.layer.ToString() == "UI"; //Only MainCam has the fluff so want to optimise UI cam
     }
 }
 
@@ -118,6 +121,7 @@ public static class SRPPlaygroundPipeline
         // //////////////////////////////////// START EACH CAMERA RENDERING //////////////////////////////////////////////
         foreach (Camera camera in cameras)
         {  
+
             //************************** UGUI Geometry on scene view *************************
             #if UNITY_EDITOR
                  if (camera.cameraType == CameraType.SceneView)
@@ -378,16 +382,16 @@ public static class SRPPlaygroundPipeline
                 
                 if (SystemInfo.usesReversedZBuffer)
                 {
-                    /*
+                    
                     proj.m20 = -proj.m20/2f;
                     proj.m21 = -proj.m21/2f;
                     proj.m22 = -proj.m22/2f;
-                    proj.m23 = -proj.m23/4f;*/
-
+                    proj.m23 = -proj.m23/4f;
+                    /*
                     proj.m20 = -proj.m20;
                     proj.m21 = -proj.m21;
                     proj.m22 = -proj.m22;
-                    proj.m23 = -proj.m23;
+                    proj.m23 = -proj.m23;*/
                 }
                 
                 Matrix4x4 WorldToShadow = proj * view;
