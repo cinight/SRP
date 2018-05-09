@@ -390,7 +390,7 @@ public static class SRPPlaygroundPipeline
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
 
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
-                cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+                cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
 
                 Debug.Log(cmdShadow2.name);
 
@@ -440,8 +440,6 @@ public static class SRPPlaygroundPipeline
                 CommandBuffer cmdpp = new CommandBuffer();
                 cmdpp.name = "("+camera.name+")"+ "Post-processing for Opaque";
 
-                //cmdpp.Blit( BuiltinRenderTextureType.CameraTarget, m_ColorRT);
-
                 m_PostProcessRenderContext.Reset();
                 m_PostProcessRenderContext.camera = camera;
                 m_PostProcessRenderContext.source = m_ColorRT;
@@ -461,8 +459,10 @@ public static class SRPPlaygroundPipeline
             CommandBuffer cmdDepth = new CommandBuffer();
             cmdDepth.name = "("+camera.name+")"+ "Depth";
 
-            if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera") m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
-                else m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
+            if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera" || !SystemInfo.graphicsUVStartsAtTop) 
+                m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
+                else 
+                m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
             cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
             cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
             cmdDepth.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
