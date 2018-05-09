@@ -117,7 +117,7 @@ public static class SRPPlaygroundPipeline
 
         // //////////////////////////////////// START EACH CAMERA RENDERING //////////////////////////////////////////////
         foreach (Camera camera in cameras)
-        {
+        {  
             //************************** UGUI Geometry on scene view *************************
             #if UNITY_EDITOR
                  if (camera.cameraType == CameraType.SceneView)
@@ -333,6 +333,8 @@ public static class SRPPlaygroundPipeline
 
             CommandBuffer cmdDepthOpaque2 = new CommandBuffer();
             cmdDepthOpaque2.name = "(" + camera.name + ")" + "After Depth";
+                
+                cmdDepthOpaque2.SetGlobalTexture(m_DepthRTid, m_DepthRT);
                 cmdDepthOpaque2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
             context.ExecuteCommandBuffer(cmdDepthOpaque2);
             cmdDepthOpaque2.Release();
@@ -459,12 +461,14 @@ public static class SRPPlaygroundPipeline
             CommandBuffer cmdDepth = new CommandBuffer();
             cmdDepth.name = "("+camera.name+")"+ "Depth";
 
+
             if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera" || !SystemInfo.graphicsUVStartsAtTop) 
-                m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
+                cmdDepth.EnableShaderKeyword ("_FLIPUV"); //m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
                 else 
-                m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
-            cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
-            cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
+                cmdDepth.DisableShaderKeyword ("_FLIPUV");//m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
+
+            //cmdDepth.Blit(m_DepthRT, m_CopyDepthRT, m_CopyDepthMaterial);
+            //cmdDepth.SetGlobalTexture(m_DepthRTid, m_CopyDepthRT);
             cmdDepth.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
 
             context.ExecuteCommandBuffer(cmdDepth);

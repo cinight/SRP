@@ -24,6 +24,7 @@ Shader "Shield 2"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 2.0
+            #pragma multi_compile __ _FLIPUV
 
             #include "UnityCG.cginc"
 
@@ -66,7 +67,13 @@ Shader "Shield 2"
             {
 				half4 col = tex2D(_MainTex, i.texcoord);
 
-                    float sceneZ = LinearEyeDepth (SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.projPos)));
+                    float2 uv = i.projPos.xy/ i.projPos.z;
+
+                    #if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
+                        uv.y = 1- uv.y;
+                    #endif
+
+                    float sceneZ = LinearEyeDepth (tex2D(_CameraDepthTexture, uv));
                     float partZ = i.projPos.z;
                     float fZ = (sceneZ-partZ);
                     float fade = saturate (_InvFade * fZ);
