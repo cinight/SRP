@@ -413,8 +413,6 @@ public static class SRPPlaygroundPipeline
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
                 cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
 
-                Debug.Log(cmdShadow2.name);
-
                 context.ExecuteCommandBuffer(cmdShadow2);
                 cmdShadow2.Release();
 
