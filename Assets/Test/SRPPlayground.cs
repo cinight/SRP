@@ -37,9 +37,6 @@ public class SRPPlaygroundInstance : RenderPipeline
 
         SRPPlaygroundPipeline.Render(renderContext, customCameras);
         SRPDefault.Render(renderContext, defaultCameras);
-
-
-            //bool uiCam = camera.gameObject.layer.ToString() == "UI"; //Only MainCam has the fluff so want to optimise UI cam
     }
 }
 
@@ -56,14 +53,12 @@ public static class SRPPlaygroundPipeline
     private static int m_ColorRTid = Shader.PropertyToID("_CameraColorRT");
     private static int m_GrabOpaqueRTid = Shader.PropertyToID("_GrabOpaqueTexture"); //Use in shader, for grab pass
     private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture"); //Use in shader, for soft particle
-    //private static int m_CopyDepthRTid = Shader.PropertyToID("_CameraCopyDepthTexture");
     private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMap"); //Use in shader, for screen-space shadow
     private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMapTexture");
 
     //Render Targets
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
     private static RenderTargetIdentifier m_DepthRT = new RenderTargetIdentifier(m_DepthRTid);
-    //private static RenderTargetIdentifier m_CopyDepthRT = new RenderTargetIdentifier(m_CopyDepthRTid);
     private static RenderTargetIdentifier m_ShadowMap = new RenderTargetIdentifier(m_ShadowMapid);
     private static RenderTargetIdentifier m_ShadowMapLight = new RenderTargetIdentifier(m_ShadowMapLightid);
 
@@ -75,7 +70,7 @@ public static class SRPPlaygroundPipeline
     private static RenderTextureFormat m_ColorFormat = RenderTextureFormat.DefaultHDR;
     private static RenderTextureFormat m_DepthFormat = RenderTextureFormat.Depth;
     private static RenderTextureFormat m_ShadowFormat = RenderTextureFormat.Shadowmap;
-    private static RenderTextureFormat m_ShadowMapFormat = RenderTextureFormat.ARGB32;
+    private static RenderTextureFormat m_ShadowMapFormat = RenderTextureFormat.Default;
     private static int depthBufferBits = 32;
     private static int m_ShadowRes = 2048;
 
@@ -216,8 +211,8 @@ public static class SRPPlaygroundPipeline
             DrawRendererSettings drawSettingsBase = new DrawRendererSettings(camera, passNameBase);
                 drawSettingsBase.rendererConfiguration = renderConfig;
 
-            DrawRendererSettings drawSettingsAdd = new DrawRendererSettings(camera, passNameAdd);
-                drawSettingsAdd.rendererConfiguration = renderConfig;
+            //DrawRendererSettings drawSettingsAdd = new DrawRendererSettings(camera, passNameAdd);
+                //drawSettingsAdd.rendererConfiguration = renderConfig;
 
             DrawRendererSettings drawSettingsShadow = new DrawRendererSettings(camera, passNameShadow);
                 //drawSettingsAdd.rendererConfiguration = renderConfig;
@@ -344,8 +339,8 @@ public static class SRPPlaygroundPipeline
             drawSettingsBase.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
             // ADD pass
-            drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
-            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
+            //drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
+            //context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
             //************************** Depth (for CameraDepthTexture in shader, also shadowmapping) ************************************
             CommandBuffer cmdDepthOpaque = new CommandBuffer();
@@ -492,8 +487,8 @@ public static class SRPPlaygroundPipeline
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
 
             // ADD pass
-            drawSettingsAdd.sorting.flags = SortFlags.CommonTransparent;
-            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
+            //drawSettingsAdd.sorting.flags = SortFlags.CommonTransparent;
+            //context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
 
             //************************** Clean Up ************************************
@@ -501,7 +496,6 @@ public static class SRPPlaygroundPipeline
             cmdclean.name = "("+camera.name+")"+ "Clean Up";
             cmdclean.ReleaseTemporaryRT(m_ColorRTid);
             cmdclean.ReleaseTemporaryRT(m_DepthRTid);
-            //cmdclean.ReleaseTemporaryRT(m_CopyDepthRTid);
             cmdclean.ReleaseTemporaryRT(m_ShadowMapid);
             cmdclean.ReleaseTemporaryRT(m_ShadowMapLightid);
             context.ExecuteCommandBuffer(cmdclean);
