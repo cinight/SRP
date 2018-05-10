@@ -72,7 +72,7 @@ public static class SRPPlaygroundPipeline
     private static RenderTextureFormat m_ShadowFormat = RenderTextureFormat.Shadowmap;
     private static RenderTextureFormat m_ShadowMapFormat = RenderTextureFormat.Default;
     private static int depthBufferBits = 32;
-    private static int m_ShadowRes = 2048;
+    private static int m_ShadowRes = 1024;
 
     //Misc
     private static PostProcessRenderContext m_PostProcessRenderContext = new PostProcessRenderContext();
