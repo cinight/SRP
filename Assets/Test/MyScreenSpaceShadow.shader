@@ -4,85 +4,6 @@ Shader "Hidden/My/ScreenSpaceShadows"
     {
         Tags{ "RenderPipeline" = "ForwardBase" "IgnoreProjector" = "True"}
 
-        CGINCLUDE
-
-        struct VertexInput
-        {
-            float4 vertex   : POSITION;
-            float2 texcoord : TEXCOORD0;
-        };
-
-        struct Interpolators
-        {
-            float4  pos      : SV_POSITION;
-            float4  texcoord : TEXCOORD0;
-        };
-
-        Interpolators Vertex(VertexInput i)
-        {
-            Interpolators o;
-
-            o.pos = UnityObjectToClipPos(i.vertex.xyz);
-
-            float4 projPos = o.pos * 0.5;
-            projPos.xy = projPos.xy + projPos.w;
-
-            float4 scaleOffset = 1;
-            float2 suv = saturate(i.texcoord);
-            o.texcoord.xy = suv.xy * scaleOffset.xy + scaleOffset.zw * 1.0;
-            o.texcoord.zw = projPos.xy;
-
-            return o;
-        }
-
-        float4x4  _WorldToShadow; //only directional light, and one for avoid issue
-        half _ShadowStrength;
-        sampler2D _MyShadowMap;
-        sampler2D _CameraDepthTexture;
-
-        half4 Fragment(Interpolators i) : SV_Target
-        {
-
-            float deviceDepth = tex2D(_CameraDepthTexture, i.texcoord.xy).r;
-
-            #if UNITY_REVERSED_Z
-                deviceDepth = 1 - deviceDepth;
-            #endif
-            deviceDepth = 2 * deviceDepth - 1; //NOTE: Currently must massage depth before computing CS position.
-
-            //View
-            float4 positionCS = float4(i.texcoord.zw * 2.0 - 1.0, deviceDepth, 1.0);
-            #if UNITY_UV_STARTS_AT_TOP
-                positionCS.y = -positionCS.y;
-            #endif
-            float4 positionVS = mul(unity_CameraInvProjection, positionCS);
-            positionVS.z = -positionVS.z;
-            float3 vpos = positionVS.xyz / positionVS.w;
-
-            //World
-            float3 wpos = mul(unity_CameraToWorld, float4(vpos, 1)).xyz;
-
-            //Fetch shadow coordinates for cascade.
-            float4 coords  = mul(_WorldToShadow, float4(wpos, 1.0)); //no cascade
-
-            // Screenspace shadowmap is only used for directional lights which use orthogonal projection.
-            coords.xyz /= coords.w;
-            float attenuation = tex2D(_MyShadowMap, coords.xy).r; //textureName.SampleCmpLevelZero(samplerName, (coord3).xy, (coord3).z)
-            float oneMinusT = 1.0 - _ShadowStrength;
-            attenuation = oneMinusT + attenuation * _ShadowStrength;
-
-            return attenuation;
-            //#if UNITY_REVERSED_Z
-            //    if(coords.z <= 0) return 1.0;
-            //    else return attenuation;
-            //#else
-             //   if(coords.z >= 0) return 1.0;
-            //    else return attenuation;
-            //#endif
-        }
-
-        ENDCG
-
         Pass
         {
             Name "Default"
@@ -94,6 +15,69 @@ Shader "Hidden/My/ScreenSpaceShadows"
 
             #pragma vertex   Vertex
             #pragma fragment Fragment
+            #pragma multi_compile __ _FLIPUV
+
+            #include "UnityCG.cginc"
+			#include "UnityShadowLibrary.cginc"
+
+
+            struct VertexInput
+            {
+                float4 vertex   : POSITION;
+                float4 texcoord : TEXCOORD0;
+            };
+
+            struct Interpolators
+            {
+                float4  pos      : SV_POSITION;
+                float4  texcoord : TEXCOORD0;
+            };
+
+            Interpolators Vertex(VertexInput v)
+            {
+                Interpolators o;
+
+                o.pos = UnityObjectToClipPos(v.vertex.xyz);
+                o.texcoord = v.texcoord;
+
+                return o;
+            }
+
+            half _ShadowStrength;
+            UNITY_DECLARE_SHADOWMAP(_ShadowMapTexture);
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+
+            half4 Fragment(Interpolators i) : SV_Target
+            {
+                //uv
+                float2 uv = i.texcoord.xy;
+                #if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
+                        uv.y = 1- uv.y;
+                #endif
+
+                //depth
+                float zdepth = tex2D(_CameraDepthTexture, uv).r;
+                zdepth = Linear01Depth(zdepth);
+
+                //View
+                float4 positionCS = float4(uv,zdepth,1.0);
+                float4 positionVS = mul(unity_CameraInvProjection, positionCS);
+                positionVS.z = -positionVS.z;
+                float3 vpos = positionVS.xyz / positionVS.w;
+
+                //World
+                float3 wpos = mul(unity_CameraToWorld, float4(vpos, 1)).xyz;
+
+                //Fetch shadow coordinates for cascade.
+                float4 coords  = mul(unity_WorldToShadow[0], float4(wpos, 1.0));
+                coords.xyz /= coords.w;
+
+                float attenuation = UNITY_SAMPLE_SHADOW(_ShadowMapTexture, coords);
+                attenuation = lerp(1.0f-_ShadowStrength,1,attenuation);
+
+                return attenuation;
+            }
+
             ENDCG
         }
     }

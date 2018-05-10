@@ -94,7 +94,7 @@ public static class SRPPlaygroundPipeline
     {
         //************************** Create Blit Materials ****************************************
         if ( m_CopyDepthMaterial == null ) m_CopyDepthMaterial = new Material ( Shader.Find ( "Hidden/MyTestCopyDepth" ) );
-        if ( m_ScreenSpaceShadowsMaterial == null ) m_ScreenSpaceShadowsMaterial = new Material ( Shader.Find ("Hidden/Internal-ScreenSpaceShadows") );
+        if ( m_ScreenSpaceShadowsMaterial == null ) m_ScreenSpaceShadowsMaterial = new Material ( Shader.Find ("Hidden/My/ScreenSpaceShadows") );
 
         //************************** Set Rendering Features ****************************************
         #if UNITY_EDITOR
@@ -382,17 +382,19 @@ public static class SRPPlaygroundPipeline
                     proj.m21 = -proj.m21/2f;
                     proj.m22 = -proj.m22/2f;
                     proj.m23 = -proj.m23/4f;
+                    
                     /*
                     proj.m20 = -proj.m20;
                     proj.m21 = -proj.m21;
                     proj.m22 = -proj.m22;
-                    proj.m23 = -proj.m23;*/
+                    proj.m23 = -proj.m23;
+                    */
                 }
                 
                 Matrix4x4 WorldToShadow = proj * view;
-
+ 
                 float f = 0.5f;
-
+ 
                 var textureScaleAndBias = Matrix4x4.identity;
                 textureScaleAndBias.m00 = f;
                 textureScaleAndBias.m11 = f;
