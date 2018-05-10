@@ -267,11 +267,12 @@ public static class SRPPlaygroundPipeline
             Matrix4x4 proj = Matrix4x4.identity;
 
             //************************** Shadow Mapping ************************************
+            bool successShadowMap = false;
             if (doShadow)
             {
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
 
-                bool success = cull.ComputeDirectionalShadowMatricesAndCullingPrimitives(mainLightIndex,
+                successShadowMap = cull.ComputeDirectionalShadowMatricesAndCullingPrimitives(mainLightIndex,
                         0, 1, new Vector3(1,0,0),
                         m_ShadowRes, mainLight.shadowNearPlane, out view, out proj,
                         out shadowSettings.splitData);
@@ -368,47 +369,42 @@ public static class SRPPlaygroundPipeline
                 cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
                 cmdShadow2.ClearRenderTarget(false, true, Color.white);
 
-                cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
-                cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
-
-                //Setup shadow variables
-                Vector4 LightShadowData = new Vector4(0,1,0.22f,-2.7f);
-                cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
-                
-                if (SystemInfo.usesReversedZBuffer)
+                if(successShadowMap)
                 {
+                    cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
+                    cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
+
+                    //Setup shadow variables
+                    Vector4 LightShadowData = new Vector4(0,1,0.22f,-2.7f);
+                    cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
                     
-                    proj.m20 = -proj.m20/2f;
-                    proj.m21 = -proj.m21/2f;
-                    proj.m22 = -proj.m22/2f;
-                    proj.m23 = -proj.m23/4f;
+                    if (SystemInfo.usesReversedZBuffer)
+                    {
+                        proj.m20 = -proj.m20;
+                        proj.m21 = -proj.m21;
+                        proj.m22 = -proj.m22;
+                        proj.m23 = -proj.m23;
+                    }
                     
-                    /*
-                    proj.m20 = -proj.m20;
-                    proj.m21 = -proj.m21;
-                    proj.m22 = -proj.m22;
-                    proj.m23 = -proj.m23;
-                    */
+                    Matrix4x4 WorldToShadow = proj * view;
+    
+                    float f = 0.5f;
+    
+                    var textureScaleAndBias = Matrix4x4.identity;
+                    textureScaleAndBias.m00 = f;
+                    textureScaleAndBias.m11 = f;
+                    textureScaleAndBias.m22 = f;
+                    textureScaleAndBias.m03 = f;
+                    textureScaleAndBias.m23 = f;
+                    textureScaleAndBias.m13 = f;
+
+                    WorldToShadow = textureScaleAndBias * WorldToShadow;
+                    
+
+
+                    cmdShadow2.SetGlobalMatrix("_WorldToShadow", WorldToShadow);
+                    cmdShadow2.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
                 }
-                
-                Matrix4x4 WorldToShadow = proj * view;
- 
-                float f = 0.5f;
- 
-                var textureScaleAndBias = Matrix4x4.identity;
-                textureScaleAndBias.m00 = f;
-                textureScaleAndBias.m11 = f;
-                textureScaleAndBias.m22 = f;
-                textureScaleAndBias.m03 = f;
-                textureScaleAndBias.m23 = f;
-                textureScaleAndBias.m13 = f;
-
-                WorldToShadow = textureScaleAndBias * WorldToShadow;
-                
-
-
-                cmdShadow2.SetGlobalMatrix("unity_WorldToShadow0", WorldToShadow);
-                cmdShadow2.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
 
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
 
@@ -417,8 +413,6 @@ public static class SRPPlaygroundPipeline
 
                 context.ExecuteCommandBuffer(cmdShadow2);
                 cmdShadow2.Release();
-
-                
             }
 
             //************************** Opaque Texture (Grab Pass) ************************************

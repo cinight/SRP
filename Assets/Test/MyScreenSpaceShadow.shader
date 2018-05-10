@@ -11,74 +11,103 @@ Shader "Hidden/My/ScreenSpaceShadows"
             ZWrite Off
             Cull Off
 
-            CGPROGRAM
-
+            HLSLPROGRAM
             #pragma vertex   Vertex
             #pragma fragment Fragment
             #pragma multi_compile __ _FLIPUV
 
-            #include "UnityCG.cginc"
-			#include "UnityShadowLibrary.cginc"
+            #include "LWRP/ShaderLibrary/Core.hlsl"
 
+            Texture2D _CameraDepthTexture;
+            SamplerState sampler_CameraDepthTexture;
+
+            Texture2D _ShadowMapTexture;
+            SamplerComparisonState sampler_ShadowMapTexture;
+
+            float4x4 _WorldToShadow;
+            float _ShadowStrength;
 
             struct VertexInput
             {
                 float4 vertex   : POSITION;
-                float4 texcoord : TEXCOORD0;
+                float2 texcoord : TEXCOORD0;
             };
 
-            struct Interpolators
+            struct v2f
             {
-                float4  pos      : SV_POSITION;
-                float4  texcoord : TEXCOORD0;
+                half4  pos      : SV_POSITION;
+                half4  texcoord : TEXCOORD0;
             };
 
-            Interpolators Vertex(VertexInput v)
+            v2f Vertex(VertexInput i)
             {
-                Interpolators o;
+                v2f o;
 
-                o.pos = UnityObjectToClipPos(v.vertex.xyz);
-                o.texcoord = v.texcoord;
+                o.pos = TransformObjectToHClip(i.vertex.xyz);
+
+                float4 projPos = o.pos * 0.5;
+                projPos.xy = projPos.xy + projPos.w;
+
+                o.texcoord.xy = i.texcoord;
+
+                #if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
+					o.texcoord.y = 1-o.texcoord.y;
+				#endif
+
+                o.texcoord.zw = projPos.xy;
 
                 return o;
             }
 
-            half _ShadowStrength;
-            UNITY_DECLARE_SHADOWMAP(_ShadowMapTexture);
-            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
-
-            half4 Fragment(Interpolators i) : SV_Target
+            half4 Fragment(v2f i) : SV_Target
             {
-                //uv
-                float2 uv = i.texcoord.xy;
-                #if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
-                        uv.y = 1- uv.y;
+                float deviceDepth = _CameraDepthTexture.Sample(sampler_CameraDepthTexture, i.texcoord.xy);
+
+                #if UNITY_REVERSED_Z
+                    deviceDepth = 1 - deviceDepth;
+                #endif
+                    deviceDepth = 2 * deviceDepth - 1; //NOTE: Currently must massage depth before computing CS position.
+
+                //Clip
+                float4 positionCS = float4(i.texcoord.zw * 2.0 - 1.0, deviceDepth, 1.0);
+                #if UNITY_UV_STARTS_AT_TOP
+                    positionCS.y = -positionCS.y;
                 #endif
 
-                //depth
-                float zdepth = tex2D(_CameraDepthTexture, uv).r;
-                zdepth = Linear01Depth(zdepth);
-
                 //View
-                float4 positionCS = float4(uv,zdepth,1.0);
                 float4 positionVS = mul(unity_CameraInvProjection, positionCS);
-                positionVS.z = -positionVS.z;
-                float3 vpos = positionVS.xyz / positionVS.w;
+                positionVS.z = -positionVS.z; // The view space uses a right-handed coordinate system.
+                float3 vpos =  positionVS.xyz / positionVS.w;
 
                 //World
                 float3 wpos = mul(unity_CameraToWorld, float4(vpos, 1)).xyz;
 
-                //Fetch shadow coordinates for cascade.
-                float4 coords  = mul(unity_WorldToShadow[0], float4(wpos, 1.0));
-                coords.xyz /= coords.w;
+                //Debug matrix when direction = 60, 0 ,0
+                float4x4 wts = {
+                    0.032, 0, 0, 0.5,
+                    0, 0.016, 0.028, 0.4,
+                    0, 0.024, -0.014, 0.49,
+                    0, 0, 0, 1
+                };
 
-                float attenuation = UNITY_SAMPLE_SHADOW(_ShadowMapTexture, coords);
-                attenuation = lerp(1.0f-_ShadowStrength,1,attenuation);
+                //Fetch shadow coordinates for cascade.
+                //float4 coords  = mul(wts, float4(wpos, 1.0));
+                float4 coords  = mul(_WorldToShadow, float4(wpos, 1.0));
+
+
+
+                // Screenspace shadowmap is only used for directional lights which use orthogonal projection.
+                //half shadowStrength = 1;
+
+                coords.xyz /= coords.w;
+                float attenuation = _ShadowMapTexture.SampleCmpLevelZero(sampler_ShadowMapTexture, coords.xy, coords.z);
+                float oneMinusT = 1.0 - _ShadowStrength;
+                attenuation = oneMinusT + attenuation * _ShadowStrength;
 
                 return attenuation;
             }
 
-            ENDCG
+            ENDHLSL
         }
     }
 }
