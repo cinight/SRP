@@ -462,11 +462,11 @@ public static class SRPPlaygroundPipeline
 
             //************************** Scene View & Preview Cam Fix ************************************
             #if UNITY_EDITOR
-                if (camera.cameraType == CameraType.SceneView) //Copy depth to scene view camera, so that gizmo and grid will appear
+                if (camera.cameraType == CameraType.SceneView) //Scene view needs SV_Depth, so that gizmo and grid will appear
                 {
                     CommandBuffer cmdSceneDepth = new CommandBuffer();
                     cmdSceneDepth.name = "("+camera.name+")"+ "Copy Depth to SceneViewCamera";
-                    cmdSceneDepth.Blit(m_DepthRT, BuiltinRenderTextureType.CameraTarget, m_CopyDepthMaterial);
+                    cmdSceneDepth.Blit(BuiltinRenderTextureType.CameraTarget, BuiltinRenderTextureType.CameraTarget, m_CopyDepthMaterial);
                     context.ExecuteCommandBuffer(cmdSceneDepth);
                     cmdSceneDepth.Release();
                 }
