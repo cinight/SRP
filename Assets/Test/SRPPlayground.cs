@@ -119,7 +119,6 @@ public static class SRPPlaygroundPipeline
     {
         foreach (Camera camera in cameras)
         {  
-
             //************************** UGUI Geometry on scene view *************************
             #if UNITY_EDITOR
                  if (camera.cameraType == CameraType.SceneView)
@@ -133,7 +132,7 @@ public static class SRPPlaygroundPipeline
             CullResults cull = new CullResults();
             CullResults.Cull(ref cullingParams, context, ref cull);
 
-            //************************** Lighting Variables  *****************************
+            //************************** Lighting Variables *****************************
             CommandBuffer cmdLighting = new CommandBuffer();
             cmdLighting.name = "("+camera.name+")"+ "Lighting variable";
             int additionalLightSet = 0;
@@ -174,14 +173,6 @@ public static class SRPPlaygroundPipeline
                         float quadAtten = 25.0f / lightRangeSqr;
                         lightAttn[0] = new Vector4(quadAtten, oneOverFadeRangeSqr, lightRangeSqrOverFadeRangeSqr, 1.0f);
 
-                        /*
-                        SphericalHarmonicsL2 ambientSH = RenderSettings.ambientProbe;
-                        Color linearGlossyEnvColor = new Color(ambientSH[0, 0], ambientSH[1, 0], ambientSH[2, 0]) * RenderSettings.reflectionIntensity;
-                        Color glossyEnvColor = CoreUtils.ConvertLinearToActiveColorSpace(linearGlossyEnvColor);
-                        Shader.SetGlobalVector("_GlossyEnvironmentColor", glossyEnvColor);
-                        // Used when subtractive mode is selected
-                        Shader.SetGlobalVector("_SubtractiveShadowColor", CoreUtils.ConvertSRGBToActiveColorSpace(RenderSettings.subtractiveShadowColor));
-                        */
                         cmdLighting.SetGlobalVector("_LightColor0", lightColors[0]);
                         cmdLighting.SetGlobalVector("_WorldSpaceLightPos0", lightPositions[0] );
 
@@ -204,7 +195,7 @@ public static class SRPPlaygroundPipeline
             context.ExecuteCommandBuffer(cmdLighting);
             cmdLighting.Release();
 
-            //************************** Draw Settings  ************************************
+            //************************** Draw Settings ************************************
             FilterRenderersSettings filterSettings = new FilterRenderersSettings(true);
 
             DrawRendererSettings drawSettingsDefault = new DrawRendererSettings(camera, passNameDefault);
@@ -216,13 +207,6 @@ public static class SRPPlaygroundPipeline
                 drawSettingsBase.flags = DrawRendererFlags.EnableDynamicBatching;
                 drawSettingsBase.rendererConfiguration = renderConfig;
 
-            //DrawRendererSettings drawSettingsAdd = new DrawRendererSettings(camera, passNameAdd);
-                //drawSettingsAdd.rendererConfiguration = renderConfig;
-
-            //DrawRendererSettings drawSettingsShadow = new DrawRendererSettings(camera, passNameShadow);
-                //drawSettingsShadow.flags = DrawRendererFlags.EnableDynamicBatching;
-                //drawSettingsShadow.rendererConfiguration = renderConfig;
-
             //************************** Set TempRT ************************************
             CommandBuffer cmdTempId = new CommandBuffer();
             cmdTempId.name = "("+camera.name+")"+ "Setup TempRT";
@@ -232,9 +216,6 @@ public static class SRPPlaygroundPipeline
             depthRTDesc.colorFormat = m_DepthFormat;
             depthRTDesc.depthBufferBits = depthBufferBits;
             cmdTempId.GetTemporaryRT(m_DepthRTid, depthRTDesc,FilterMode.Bilinear);
-
-            //Copy depth for _CameraDepthTexture
-            //cmdTempId.GetTemporaryRT(m_CopyDepthRTid, depthRTDesc, FilterMode.Bilinear);
 
             //Color
             RenderTextureDescriptor colorRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
@@ -249,7 +230,6 @@ public static class SRPPlaygroundPipeline
             RenderTextureDescriptor shadowRTDesc = new RenderTextureDescriptor(m_ShadowRes,m_ShadowRes);
             shadowRTDesc.colorFormat = m_ShadowFormat;
             shadowRTDesc.depthBufferBits = depthBufferBits;
-            //shadowRTDesc.sRGB = true;
             shadowRTDesc.msaaSamples = 1;
             shadowRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ShadowMapLightid, shadowRTDesc,FilterMode.Bilinear);//depth per light
@@ -258,7 +238,6 @@ public static class SRPPlaygroundPipeline
             RenderTextureDescriptor shadowMapRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             shadowMapRTDesc.colorFormat = m_ShadowMapFormat;
             shadowMapRTDesc.depthBufferBits = 0;
-            //shadowMapRTDesc.sRGB = true;
             shadowMapRTDesc.msaaSamples = 1;
             shadowMapRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ShadowMapid, shadowMapRTDesc, FilterMode.Bilinear);//screen space shadow
@@ -294,22 +273,6 @@ public static class SRPPlaygroundPipeline
                 cmdShadow.EnableScissorRect(new Rect(4, 4, m_ShadowRes - 8, m_ShadowRes - 8));
                 cmdShadow.SetViewProjectionMatrices(view, proj);
 
-                /*
-                Light light = mainLight;
-                float bias = 0.0f;
-                float normalBias = 0.0f;
-                const float kernelRadius = 3.65f;
-                float sign = (SystemInfo.usesReversedZBuffer) ? 1.0f : -1.0f;
-                bias = light.shadowBias * proj.m22 * sign;
-                double frustumWidth = 2.0 / (double)proj.m00;
-                double frustumHeight = 2.0 / (double)proj.m11;
-                float texelSizeX = (float)(frustumWidth / (double)m_ShadowRes);
-                float texelSizeY = (float)(frustumHeight / (double)m_ShadowRes);
-                float texelSize = Mathf.Max(texelSizeX, texelSizeY);
-                normalBias = -light.shadowNormalBias * texelSize * kernelRadius;
-                cmdShadow.SetGlobalVector("unity_LightShadowBias", new Vector4(bias, normalBias, 0.0f, 0.0f));
-                */
-
                 context.ExecuteCommandBuffer(cmdShadow);
                 cmdShadow.Clear();
 
@@ -340,27 +303,26 @@ public static class SRPPlaygroundPipeline
 
             //************************** Opaque ************************************
             filterSettings.renderQueueRange = RenderQueueRange.opaque;
+
             // DEFAULT pass, draw shaders without a pass name
             drawSettingsDefault.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsDefault, filterSettings);
+
             // BASE pass
             drawSettingsBase.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
-            // ADD pass
-            //drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
-            //context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
+
 
             //************************** Depth (for CameraDepthTexture in shader, also shadowmapping) ************************************
             CommandBuffer cmdDepthOpaque = new CommandBuffer();
             cmdDepthOpaque.name = "(" + camera.name + ")" + "Make CameraDepthTexture";
 
             if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera" || !SystemInfo.graphicsUVStartsAtTop) 
-                cmdDepthOpaque.EnableShaderKeyword ("_FLIPUV"); //m_CopyDepthMaterial.EnableKeyword("_FLIPUV");
+                cmdDepthOpaque.EnableShaderKeyword ("_FLIPUV");
                 else 
-                cmdDepthOpaque.DisableShaderKeyword ("_FLIPUV");//m_CopyDepthMaterial.DisableKeyword("_FLIPUV");
+                cmdDepthOpaque.DisableShaderKeyword ("_FLIPUV");
 
-
-                cmdDepthOpaque.SetGlobalTexture(m_DepthRTid, m_DepthRT);
+            cmdDepthOpaque.SetGlobalTexture(m_DepthRTid, m_DepthRT);
                 
             context.ExecuteCommandBuffer(cmdDepthOpaque);
             cmdDepthOpaque.Release();
@@ -377,17 +339,8 @@ public static class SRPPlaygroundPipeline
 
                 if(successShadowMap)
                 {
-                    //cmdShadow2.EnableShaderKeyword("DIRECTIONAL");
                     cmdShadow2.EnableShaderKeyword("SHADOWS_SCREEN");
                     cmdShadow2.EnableShaderKeyword("LIGHTMAP_SHADOW_MIXING");
-                    //cmdShadow2.EnableShaderKeyword("LIGHTPROBE_SH");
-                    //cmdShadow2.EnableShaderKeyword("FOG_EXP2");
-                    //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
-                    //cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
-
-                    //Setup shadow variables
-                    //Vector4 LightShadowData = new Vector4(0,1,0.22f,-2.7f);
-                    //cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
                     
                     if (SystemInfo.usesReversedZBuffer)
                     {
@@ -451,11 +404,6 @@ public static class SRPPlaygroundPipeline
             drawSettingsBase.sorting.flags = SortFlags.CommonTransparent;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
 
-            // ADD pass
-            //drawSettingsAdd.sorting.flags = SortFlags.CommonTransparent;
-            //context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
-
-
             //************************** Post-processing ************************************
             m_CameraPostProcessLayer = camera.GetComponent<PostProcessLayer>();
             if(m_CameraPostProcessLayer != null && m_CameraPostProcessLayer.enabled)
@@ -473,7 +421,6 @@ public static class SRPPlaygroundPipeline
                 m_PostProcessRenderContext.flip = camera.targetTexture == null;
                 m_CameraPostProcessLayer.Render(m_PostProcessRenderContext);
 
-                //cmdpp.Blit(m_ColorRT,BuiltinRenderTextureType.CameraTarget);
                 cmdpp.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
                 
                 context.ExecuteCommandBuffer(cmdpp);
