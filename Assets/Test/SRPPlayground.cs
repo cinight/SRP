@@ -362,7 +362,6 @@ public static class SRPPlaygroundPipeline
             context.ExecuteCommandBuffer(cmdDepthOpaque);
             cmdDepthOpaque.Release();
 
-
             //************************** Screen Space Shadow ************************************
             if (doShadow)
             {
@@ -420,6 +419,14 @@ public static class SRPPlaygroundPipeline
                 context.ExecuteCommandBuffer(cmdShadow2);
                 cmdShadow2.Release();
             }
+
+            //************************** Blit to Camera Target so that reflection probes will work ************************************
+            CommandBuffer cmdColor = new CommandBuffer();
+            cmdColor.name = "("+camera.name+")"+ "blit color to cam target";
+            cmdColor.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
+            cmdColor.SetRenderTarget(m_ColorRT, m_DepthRT);
+            context.ExecuteCommandBuffer(cmdColor);
+            cmdColor.Release();
 
             //************************** Opaque Texture (Grab Pass) ************************************
             CommandBuffer cmdGrab = new CommandBuffer();
