@@ -378,7 +378,7 @@ public static class SRPPlaygroundPipeline
                     //cmdShadow2.EnableShaderKeyword("DIRECTIONAL");
                     cmdShadow2.EnableShaderKeyword("SHADOWS_SCREEN");
                     cmdShadow2.EnableShaderKeyword("LIGHTMAP_SHADOW_MIXING");
-                    cmdShadow2.EnableShaderKeyword("LIGHTPROBE_SH");
+                    //cmdShadow2.EnableShaderKeyword("LIGHTPROBE_SH");
                     //cmdShadow2.EnableShaderKeyword("FOG_EXP2");
                     //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
                     //cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
