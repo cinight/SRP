@@ -19,11 +19,13 @@
 			sampler2D _MainTex;
 			float4 _MainTex_ST;
 			sampler2D _NoiseTex;
+            float _FurFactor;
+            float _FurLayer;
 
 			v2f vert (appdata v)
 			{
 				v2f o;
-				v.vertex += FURLAYER * v.normal;
+				v.vertex += FURLAYER * v.normal * _FurLayer;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 				return o;
@@ -34,7 +36,7 @@
 				fixed4 col = tex2D(_MainTex, i.uv) + FURLAYER;
 				fixed noise = tex2D(_NoiseTex, i.uv).r;
 
-				clip(noise - FURLAYER);
+				clip(noise - FURLAYER * _FurFactor);
 
 				return col;
 			}

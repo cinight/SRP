@@ -3,7 +3,9 @@
 	Properties
 	{
 		_MainTex ("Main Texture", 2D) = "white" {}
-		_NoiseTex ("Noise Texture", 2D) = "white" {}
+		[NoScaleOffset] _NoiseTex ("Noise Texture", 2D) = "white" {}
+		_FurLayer ("Fur Layer", Range(0.1,1)) = 1
+		_FurFactor ("Fur Factor", Range(1,10)) = 1
 	}
 	SubShader
 	{
