@@ -50,9 +50,9 @@ Shader "Hidden/My/ScreenSpaceShadows"
 
                 o.texcoord.xy = i.texcoord;
 
-                #if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
-					o.texcoord.y = 1-o.texcoord.y;
-				#endif
+                //#if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
+				//	o.texcoord.y = 1-o.texcoord.y;
+				//#endif
 
                 o.texcoord.zw = projPos.xy;
 

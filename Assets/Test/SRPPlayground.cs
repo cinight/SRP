@@ -237,7 +237,7 @@ public static class SRPPlaygroundPipeline
             RenderTextureDescriptor colorRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             colorRTDesc.colorFormat = m_ColorFormat;
             colorRTDesc.depthBufferBits = 0;
-            //colorRTDesc.sRGB = true;
+            colorRTDesc.sRGB = true;
             colorRTDesc.msaaSamples = 1;
             colorRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ColorRTid, colorRTDesc,FilterMode.Bilinear);
@@ -325,8 +325,8 @@ public static class SRPPlaygroundPipeline
             //************************** Clear ************************************
             CommandBuffer cmd = new CommandBuffer();
             cmd.name = "("+camera.name+")"+ "Clear Flag";
-            
-            cmd.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
+
+            cmd.SetRenderTarget(m_ColorRT, m_DepthRT);
             ClearFlag(cmd, camera, camera.backgroundColor);
 
             context.ExecuteCommandBuffer(cmd);
@@ -363,7 +363,7 @@ public static class SRPPlaygroundPipeline
             cmdDepthOpaque.Release();
 
 
-            //************************** Collect Shadow ************************************
+            //************************** Screen Space Shadow ************************************
             if (doShadow)
             {
                 CommandBuffer cmdShadow2 = new CommandBuffer();
@@ -415,7 +415,7 @@ public static class SRPPlaygroundPipeline
 
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
-                cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
+                cmdShadow2.SetRenderTarget(m_ColorRT, m_DepthRT);
 
                 context.ExecuteCommandBuffer(cmdShadow2);
                 cmdShadow2.Release();
@@ -425,55 +425,10 @@ public static class SRPPlaygroundPipeline
             CommandBuffer cmdGrab = new CommandBuffer();
             cmdGrab.name = "("+camera.name+")"+ "Grab Opaque";
 
-            cmdGrab.Blit(BuiltinRenderTextureType.CameraTarget, m_ColorRT);
             cmdGrab.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
 
             context.ExecuteCommandBuffer(cmdGrab);
             cmdGrab.Release();
-
-            //************************** Post-processing for opaque ************************************
-            m_CameraPostProcessLayer = camera.GetComponent<PostProcessLayer>();
-            if(m_CameraPostProcessLayer != null && m_CameraPostProcessLayer.enabled)
-            {
-                //Post-processing
-                CommandBuffer cmdpp = new CommandBuffer();
-                cmdpp.name = "("+camera.name+")"+ "Post-processing for Opaque";
-
-                m_PostProcessRenderContext.Reset();
-                m_PostProcessRenderContext.camera = camera;
-                m_PostProcessRenderContext.source = m_ColorRT;
-                m_PostProcessRenderContext.sourceFormat = m_ColorFormat;
-                m_PostProcessRenderContext.destination = m_ColorRT;
-                m_PostProcessRenderContext.command = cmdpp;
-                m_PostProcessRenderContext.flip = camera.targetTexture == null;
-                m_CameraPostProcessLayer.Render(m_PostProcessRenderContext);
-
-                cmdpp.Blit(m_ColorRT,BuiltinRenderTextureType.CameraTarget);
-                cmdpp.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
-                
-                context.ExecuteCommandBuffer(cmdpp);
-                cmdpp.Release();
-            }
-
-            //************************** Scene View & Preview Cam Fix ************************************
-            #if UNITY_EDITOR
-                if (camera.cameraType == CameraType.SceneView) //Scene view needs SV_Depth, so that gizmo and grid will appear
-                {
-                    CommandBuffer cmdSceneDepth = new CommandBuffer();
-                    cmdSceneDepth.name = "("+camera.name+")"+ "Copy Depth to SceneViewCamera";
-                    cmdSceneDepth.Blit(BuiltinRenderTextureType.CameraTarget, BuiltinRenderTextureType.CameraTarget, m_CopyDepthMaterial);
-                    context.ExecuteCommandBuffer(cmdSceneDepth);
-                    cmdSceneDepth.Release();
-                }
-                else if (camera.name == "Preview Camera") //So that transparent can render on it
-                {
-                    CommandBuffer cmdPreviewCam = new CommandBuffer();
-                    cmdPreviewCam.name = "("+camera.name+")"+ "preview camera";
-                    cmdPreviewCam.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
-                    context.ExecuteCommandBuffer(cmdPreviewCam);
-                    cmdPreviewCam.Release();
-                }
-            #endif
 
             //************************** Transparent ************************************
             filterSettings.renderQueueRange = RenderQueueRange.transparent;
@@ -490,6 +445,51 @@ public static class SRPPlaygroundPipeline
             //drawSettingsAdd.sorting.flags = SortFlags.CommonTransparent;
             //context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
+
+            //************************** Post-processing ************************************
+            m_CameraPostProcessLayer = camera.GetComponent<PostProcessLayer>();
+            if(m_CameraPostProcessLayer != null && m_CameraPostProcessLayer.enabled)
+            {
+                //Post-processing
+                CommandBuffer cmdpp = new CommandBuffer();
+                cmdpp.name = "("+camera.name+")"+ "Post-processing for Opaque";
+
+                m_PostProcessRenderContext.Reset();
+                m_PostProcessRenderContext.camera = camera;
+                m_PostProcessRenderContext.source = m_ColorRT;
+                m_PostProcessRenderContext.sourceFormat = m_ColorFormat;
+                m_PostProcessRenderContext.destination = BuiltinRenderTextureType.CameraTarget;
+                m_PostProcessRenderContext.command = cmdpp;
+                m_PostProcessRenderContext.flip = camera.targetTexture == null;
+                m_CameraPostProcessLayer.Render(m_PostProcessRenderContext);
+
+                //cmdpp.Blit(m_ColorRT,BuiltinRenderTextureType.CameraTarget);
+                cmdpp.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
+                
+                context.ExecuteCommandBuffer(cmdpp);
+                cmdpp.Release();
+            }
+
+            //************************** Scene View & Preview Camera Fix ************************************
+            #if UNITY_EDITOR
+                if (camera.cameraType == CameraType.SceneView) //Scene view needs SV_Depth, so that gizmo and grid will appear
+                {
+                    CommandBuffer cmdSceneDepth = new CommandBuffer();
+                    cmdSceneDepth.name = "("+camera.name+")"+ "Copy Depth to SceneViewCamera";
+                    cmdSceneDepth.Blit(m_DepthRT, BuiltinRenderTextureType.CameraTarget, m_CopyDepthMaterial);
+                    context.ExecuteCommandBuffer(cmdSceneDepth);
+                    cmdSceneDepth.Release();
+                }
+                else
+                if (camera.name == "Preview Camera") //Must do this blit so that it shows up things...because post-processing isn't enabled in preview cam?
+                {
+                    CommandBuffer cmdPreviewCam = new CommandBuffer();
+                    cmdPreviewCam.name = "("+camera.name+")"+ "preview camera";
+                    cmdPreviewCam.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
+                    context.ExecuteCommandBuffer(cmdPreviewCam);
+                    cmdPreviewCam.Release();
+                }
+            #endif
 
             //************************** Clean Up ************************************
             CommandBuffer cmdclean = new CommandBuffer();

@@ -69,9 +69,9 @@ Shader "Shield 2"
 
                     float2 uv = i.projPos.xy/ i.projPos.z;
 
-                    #if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
-                        uv.y = 1- uv.y;
-                    #endif
+                    //#if defined(UNITY_UV_STARTS_AT_TOP) && !defined(_FLIPUV)
+                    //    uv.y = 1- uv.y;
+                    //#endif
 
                     float sceneZ = LinearEyeDepth (tex2D(_CameraDepthTexture, uv));
                     float partZ = i.projPos.z;
