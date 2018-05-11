@@ -53,8 +53,8 @@ public static class SRPPlaygroundPipeline
     private static int m_ColorRTid = Shader.PropertyToID("_CameraColorRT");
     private static int m_GrabOpaqueRTid = Shader.PropertyToID("_GrabOpaqueTexture"); //Use in shader, for grab pass
     private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture"); //Use in shader, for soft particle
-    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMap"); //Use in shader, for screen-space shadow
-    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMapTexture");
+    private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture"); //Use in shader, for screen-space shadow
+    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMap");
 
     //Render Targets
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
@@ -313,7 +313,6 @@ public static class SRPPlaygroundPipeline
                 //Render Shadow
                 context.DrawShadows(ref shadowSettings);
 
-                cmdShadow.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
                 cmdShadow.DisableScissorRect();
                 context.ExecuteCommandBuffer(cmdShadow);
                 cmdShadow.Clear();
@@ -369,11 +368,18 @@ public static class SRPPlaygroundPipeline
             {
                 CommandBuffer cmdShadow2 = new CommandBuffer();
                 cmdShadow2.name = "("+camera.name+")"+ "Screen Space Shadow";
+
+                cmdShadow2.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight);
                 cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
-                //cmdShadow2.ClearRenderTarget(false, true, Color.white);
+                cmdShadow2.ClearRenderTarget(false, true, Color.white);
 
                 if(successShadowMap)
                 {
+                    //cmdShadow2.EnableShaderKeyword("DIRECTIONAL");
+                    cmdShadow2.EnableShaderKeyword("SHADOWS_SCREEN");
+                    cmdShadow2.EnableShaderKeyword("LIGHTMAP_SHADOW_MIXING");
+                    cmdShadow2.EnableShaderKeyword("LIGHTPROBE_SH");
+                    //cmdShadow2.EnableShaderKeyword("FOG_EXP2");
                     //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
                     //cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
 

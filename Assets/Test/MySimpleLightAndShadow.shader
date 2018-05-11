@@ -44,7 +44,7 @@
 			float4 _Color;
 			float4 _ShadowColor;
 			float4 _LightColor;
-			sampler2D _ShadowMap;
+			sampler2D _ShadowMapTexture;
 			
 			v2f vert (appdata v)
 			{
@@ -82,7 +82,7 @@
 				specular *= _SpecularTint;
 
 				//Shadow
-				float attenuation = tex2Dproj(_ShadowMap, i._ShadowCoord).r;
+				float attenuation = tex2Dproj(_ShadowMapTexture, i._ShadowCoord).r;
 				float4 shadow = lerp( _ShadowColor , 1, attenuation);
 
 				col.rgb *= shadow;

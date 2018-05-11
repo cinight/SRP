@@ -5,7 +5,7 @@ Shader "Hidden/MyInternal-ScreenSpaceShadows"
 {
 	Properties 
 	{
-		_ShadowMapTexture ("", any) = "" {}
+		_ShadowMap ("", any) = "" {}
 	}
 
 	CGINCLUDE
@@ -37,7 +37,7 @@ Shader "Hidden/MyInternal-ScreenSpaceShadows"
 			//Debug
 			SamplerState my_point_clamp_sampler;
 			UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
-			UNITY_DECLARE_SHADOWMAP(_ShadowMapTexture);
+			UNITY_DECLARE_SHADOWMAP(_ShadowMap);
 
 			struct appdata
 			{
@@ -107,7 +107,7 @@ Shader "Hidden/MyInternal-ScreenSpaceShadows"
 				float4 shadowCoord = float4(mul(unity_WorldToShadow[0], wpos).xyz, 0);
 
 				//1 tap hard shadow
-				fixed shadow = UNITY_SAMPLE_SHADOW(_ShadowMapTexture, shadowCoord);
+				fixed shadow = UNITY_SAMPLE_SHADOW(_ShadowMap, shadowCoord);
 				//shadow = lerp(_LightShadowData.r, 1.0, shadow);
 
 				float4 d = 0.5f;

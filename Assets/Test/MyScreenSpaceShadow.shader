@@ -21,8 +21,8 @@ Shader "Hidden/My/ScreenSpaceShadows"
             Texture2D _CameraDepthTexture;
             SamplerState sampler_CameraDepthTexture;
 
-            Texture2D _ShadowMapTexture;
-            SamplerComparisonState sampler_ShadowMapTexture;
+            Texture2D _ShadowMap;
+            SamplerComparisonState sampler_ShadowMap;
 
             float4x4 _WorldToShadow;
             float _ShadowStrength;
@@ -100,7 +100,7 @@ Shader "Hidden/My/ScreenSpaceShadows"
                 //half shadowStrength = 1;
 
                 coords.xyz /= coords.w;
-                float attenuation = _ShadowMapTexture.SampleCmpLevelZero(sampler_ShadowMapTexture, coords.xy, coords.z);
+                float attenuation = _ShadowMap.SampleCmpLevelZero(sampler_ShadowMap, coords.xy, coords.z);
                 float oneMinusT = 1.0 - _ShadowStrength;
                 attenuation = oneMinusT + attenuation * _ShadowStrength;
 
