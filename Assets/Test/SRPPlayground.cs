@@ -206,16 +206,19 @@ public static class SRPPlaygroundPipeline
 
             DrawRendererSettings drawSettingsDefault = new DrawRendererSettings(camera, passNameDefault);
                 drawSettingsDefault.rendererConfiguration = renderConfig;
+                drawSettingsDefault.flags = DrawRendererFlags.EnableDynamicBatching;
                 drawSettingsDefault.SetShaderPassName(5,m_UnlitPassName);
 
             DrawRendererSettings drawSettingsBase = new DrawRendererSettings(camera, passNameBase);
+                drawSettingsBase.flags = DrawRendererFlags.EnableDynamicBatching;
                 drawSettingsBase.rendererConfiguration = renderConfig;
 
             //DrawRendererSettings drawSettingsAdd = new DrawRendererSettings(camera, passNameAdd);
                 //drawSettingsAdd.rendererConfiguration = renderConfig;
 
             DrawRendererSettings drawSettingsShadow = new DrawRendererSettings(camera, passNameShadow);
-                //drawSettingsAdd.rendererConfiguration = renderConfig;
+                drawSettingsShadow.flags = DrawRendererFlags.EnableDynamicBatching;
+                //drawSettingsShadow.rendererConfiguration = renderConfig;
 
             //************************** Set TempRT ************************************
             CommandBuffer cmdTempId = new CommandBuffer();
@@ -268,6 +271,7 @@ public static class SRPPlaygroundPipeline
 
             //************************** Shadow Mapping ************************************
             bool successShadowMap = false;
+            
             if (doShadow)
             {
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
@@ -287,7 +291,7 @@ public static class SRPPlaygroundPipeline
                 cmdShadow.EnableScissorRect(new Rect(4, 4, m_ShadowRes - 8, m_ShadowRes - 8));
                 cmdShadow.SetViewProjectionMatrices(view, proj);
 
-
+                /*
                 Light light = mainLight;
                 float bias = 0.0f;
                 float normalBias = 0.0f;
@@ -301,7 +305,7 @@ public static class SRPPlaygroundPipeline
                 float texelSize = Mathf.Max(texelSizeX, texelSizeY);
                 normalBias = -light.shadowNormalBias * texelSize * kernelRadius;
                 cmdShadow.SetGlobalVector("unity_LightShadowBias", new Vector4(bias, normalBias, 0.0f, 0.0f));
-
+                */
 
                 context.ExecuteCommandBuffer(cmdShadow);
                 cmdShadow.Clear();
@@ -309,6 +313,7 @@ public static class SRPPlaygroundPipeline
                 //Render Shadow
                 context.DrawShadows(ref shadowSettings);
 
+                cmdShadow.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
                 cmdShadow.DisableScissorRect();
                 context.ExecuteCommandBuffer(cmdShadow);
                 cmdShadow.Clear();
@@ -364,19 +369,17 @@ public static class SRPPlaygroundPipeline
             {
                 CommandBuffer cmdShadow2 = new CommandBuffer();
                 cmdShadow2.name = "("+camera.name+")"+ "Screen Space Shadow";
-
-                cmdShadow2.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight); //internal one gets _ShadowMapTexture, i mess up naming
                 cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
-                cmdShadow2.ClearRenderTarget(false, true, Color.white);
+                //cmdShadow2.ClearRenderTarget(false, true, Color.white);
 
                 if(successShadowMap)
                 {
-                    cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
-                    cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
+                    //cmdShadow2.EnableShaderKeyword("SHADOWS_SINGLE_CASCADE");
+                    //cmdShadow2.EnableShaderKeyword("SHADOWS_SPLIT_SPHERES");
 
                     //Setup shadow variables
-                    Vector4 LightShadowData = new Vector4(0,1,0.22f,-2.7f);
-                    cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
+                    //Vector4 LightShadowData = new Vector4(0,1,0.22f,-2.7f);
+                    //cmdShadow2.SetGlobalVector("_LightShadowData", LightShadowData);
                     
                     if (SystemInfo.usesReversedZBuffer)
                     {
@@ -399,15 +402,12 @@ public static class SRPPlaygroundPipeline
                     textureScaleAndBias.m13 = f;
 
                     WorldToShadow = textureScaleAndBias * WorldToShadow;
-                    
-
 
                     cmdShadow2.SetGlobalMatrix("_WorldToShadow", WorldToShadow);
                     cmdShadow2.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
                 }
 
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
-
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
                 cmdShadow2.SetRenderTarget(BuiltinRenderTextureType.CameraTarget, m_DepthRT);
 
