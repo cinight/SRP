@@ -56,9 +56,9 @@
 				fixed4 bguv = i.grabPos;
 				float2 nuv = bguv.xy / bguv.w;
 				
-				#ifdef UNITY_UV_STARTS_AT_TOP
-					nuv.y = 1-nuv.y;
-				#endif
+				//#ifdef UNITY_UV_STARTS_AT_TOP
+				//	nuv.y = 1-nuv.y;
+				//#endif
 				
 				//Distoriton
 				float2 st = nuv;

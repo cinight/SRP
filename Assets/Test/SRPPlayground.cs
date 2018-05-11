@@ -26,8 +26,32 @@ public class SRPPlaygroundInstance : RenderPipeline
 {
     public SRPPlaygroundInstance()
     {
+        //Set Rendering Features, it makes the Editor shows you those settings on e.g. LightingSettings panel...
+        #if UNITY_EDITOR
+        SupportedRenderingFeatures.active = new SupportedRenderingFeatures()
+            {
+                reflectionProbeSupportFlags = SupportedRenderingFeatures.ReflectionProbeSupportFlags.None,
+                defaultMixedLightingMode = SupportedRenderingFeatures.LightmapMixedBakeMode.Subtractive,
+                supportedMixedLightingModes = SupportedRenderingFeatures.LightmapMixedBakeMode.Subtractive,
+                supportedLightmapBakeTypes = LightmapBakeType.Baked | LightmapBakeType.Mixed | LightmapBakeType.Realtime,
+                supportedLightmapsModes = LightmapsMode.CombinedDirectional | LightmapsMode.NonDirectional,
+                rendererSupportsLightProbeProxyVolumes = false,
+                rendererSupportsMotionVectors = false,
+                rendererSupportsReceiveShadows = true,
+                rendererSupportsReflectionProbes = true
+            };
+            SceneViewDrawMode.SetupDrawMode();
+        #endif
+
+        //Create Blit Materials
+        if ( SRPPlaygroundPipeline.m_CopyDepthMaterial == null ) 
+            SRPPlaygroundPipeline.m_CopyDepthMaterial = new Material ( Shader.Find ( "Hidden/MyTestCopyDepth" ) );
+        if ( SRPPlaygroundPipeline.m_ScreenSpaceShadowsMaterial == null ) 
+            SRPPlaygroundPipeline.m_ScreenSpaceShadowsMaterial = new Material ( Shader.Find ("Hidden/My/ScreenSpaceShadows") );
     }
 
+    //I don't want my UI layer to do useless things e.g. shadows, post-processing, meaningless blits...
+    //So if the Camera.RenderingPath is set to legacy ones, I let it to use my default simple pipeline
     public override void Render(ScriptableRenderContext renderContext, Camera[] cameras)
     {
         Camera[] defaultCameras;
@@ -47,7 +71,7 @@ public static class SRPPlaygroundPipeline
     private static ShaderPassName passNameDefault = new ShaderPassName("");
     private static ShaderPassName passNameBase = new ShaderPassName("ForwardBase");
     private static ShaderPassName passNameAdd = new ShaderPassName("ForwardAdd");
-    private static ShaderPassName passNameShadow = new ShaderPassName("ShadowCaster");
+    //private static ShaderPassName passNameShadow = new ShaderPassName("ShadowCaster"); //I didn't do prepass depth so I don't need it here..
 
     //Shader Properties
     private static int m_ColorRTid = Shader.PropertyToID("_CameraColorRT");
@@ -63,8 +87,8 @@ public static class SRPPlaygroundPipeline
     private static RenderTargetIdentifier m_ShadowMapLight = new RenderTargetIdentifier(m_ShadowMapLightid);
 
     //Blit Materials
-    private static Material m_CopyDepthMaterial;
-    private static Material m_ScreenSpaceShadowsMaterial;
+    public static Material m_CopyDepthMaterial; //This shader generates SV_Depth, scene view needs it
+    public static Material m_ScreenSpaceShadowsMaterial;
 
     //Constants
     private static RenderTextureFormat m_ColorFormat = RenderTextureFormat.DefaultHDR;
@@ -79,8 +103,9 @@ public static class SRPPlaygroundPipeline
     private static PostProcessLayer m_CameraPostProcessLayer;
     private static RendererConfiguration renderConfig = RendererConfiguration.PerObjectReflectionProbes | 
                                                         RendererConfiguration.PerObjectLightmaps;
+                                                        //RendererConfiguration.PerObjectLightProbe; //I don't support it for now
 
-    //Easy ClearRenderTarget
+    //Easy ClearRenderTarget, do clear according to settings on camera component
     private static void ClearFlag(CommandBuffer cmd, Camera cam, Color color)
     {
         bool clearcolor = true;
@@ -92,28 +117,6 @@ public static class SRPPlaygroundPipeline
     //Starts Rendering Part
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
-        //************************** Create Blit Materials ****************************************
-        if ( m_CopyDepthMaterial == null ) m_CopyDepthMaterial = new Material ( Shader.Find ( "Hidden/MyTestCopyDepth" ) );
-        if ( m_ScreenSpaceShadowsMaterial == null ) m_ScreenSpaceShadowsMaterial = new Material ( Shader.Find ("Hidden/My/ScreenSpaceShadows") );
-
-        //************************** Set Rendering Features ****************************************
-        #if UNITY_EDITOR
-        SupportedRenderingFeatures.active = new SupportedRenderingFeatures()
-            {
-                reflectionProbeSupportFlags = SupportedRenderingFeatures.ReflectionProbeSupportFlags.None,
-                defaultMixedLightingMode = SupportedRenderingFeatures.LightmapMixedBakeMode.Subtractive,
-                supportedMixedLightingModes = SupportedRenderingFeatures.LightmapMixedBakeMode.Subtractive,
-                supportedLightmapBakeTypes = LightmapBakeType.Baked | LightmapBakeType.Mixed | LightmapBakeType.Realtime,
-                supportedLightmapsModes = LightmapsMode.CombinedDirectional | LightmapsMode.NonDirectional,
-                rendererSupportsLightProbeProxyVolumes = false,
-                rendererSupportsMotionVectors = false,
-                rendererSupportsReceiveShadows = true,
-                rendererSupportsReflectionProbes = true
-            };
-            SceneViewDrawMode.SetupDrawMode();
-        #endif
-
-        // //////////////////////////////////// START EACH CAMERA RENDERING //////////////////////////////////////////////
         foreach (Camera camera in cameras)
         {  
 
@@ -216,8 +219,8 @@ public static class SRPPlaygroundPipeline
             //DrawRendererSettings drawSettingsAdd = new DrawRendererSettings(camera, passNameAdd);
                 //drawSettingsAdd.rendererConfiguration = renderConfig;
 
-            DrawRendererSettings drawSettingsShadow = new DrawRendererSettings(camera, passNameShadow);
-                drawSettingsShadow.flags = DrawRendererFlags.EnableDynamicBatching;
+            //DrawRendererSettings drawSettingsShadow = new DrawRendererSettings(camera, passNameShadow);
+                //drawSettingsShadow.flags = DrawRendererFlags.EnableDynamicBatching;
                 //drawSettingsShadow.rendererConfiguration = renderConfig;
 
             //************************** Set TempRT ************************************
