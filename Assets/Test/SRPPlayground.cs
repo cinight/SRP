@@ -117,6 +117,10 @@ public static class SRPPlaygroundPipeline
     //Starts Rendering Part
     public static void Render(ScriptableRenderContext context, IEnumerable<Camera> cameras)
     {
+        //For shadowmapping, the matrices from the light's point of view
+        Matrix4x4 view = Matrix4x4.identity;
+        Matrix4x4 proj = Matrix4x4.identity;
+
         foreach (Camera camera in cameras)
         {  
             //************************** UGUI Geometry on scene view *************************
@@ -256,13 +260,11 @@ public static class SRPPlaygroundPipeline
             //************************** Do shadow? ************************************
             Bounds bounds;
             bool doShadow = cull.GetShadowCasterBounds(mainLightIndex, out bounds);
-            Matrix4x4 view = Matrix4x4.identity;
-            Matrix4x4 proj = Matrix4x4.identity;
 
             //************************** Shadow Mapping ************************************
             bool successShadowMap = false;
             
-            if (doShadow)
+            if (doShadow && camera.cameraType != CameraType.SceneView)
             {
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
 

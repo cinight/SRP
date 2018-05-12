@@ -105,12 +105,12 @@ Shader "Hidden/My/ScreenSpaceShadows"
                 float oneMinusT = 1.0 - _ShadowStrength;
                 attenuation = oneMinusT + attenuation * _ShadowStrength;
 
-                float4 d = 0;
-                d = _ShadowMap.Sample(sampler_ShadowMap_state, i.texcoord.xy);
+                //float4 d = 0;
+                //d = _ShadowMap.Sample(sampler_ShadowMap_state, i.texcoord.xy);
 
                 //d = _CameraDepthTexture.Sample(sampler_CameraDepthTexture, i.texcoord.xy);
 
-                return d;
+                return attenuation;
             }
 
             ENDHLSL
