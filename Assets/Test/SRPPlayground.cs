@@ -102,8 +102,8 @@ public static class SRPPlaygroundPipeline
     private static PostProcessRenderContext m_PostProcessRenderContext = new PostProcessRenderContext();
     private static PostProcessLayer m_CameraPostProcessLayer;
     private static RendererConfiguration renderConfig = RendererConfiguration.PerObjectReflectionProbes | 
-                                                        RendererConfiguration.PerObjectLightmaps;
-                                                        //RendererConfiguration.PerObjectLightProbe; //I don't support it for now
+                                                        RendererConfiguration.PerObjectLightmaps |
+                                                        RendererConfiguration.PerObjectLightProbe;
 
     //Easy ClearRenderTarget, do clear according to settings on camera component
     private static void ClearFlag(CommandBuffer cmd, Camera cam, Color color)
@@ -207,9 +207,13 @@ public static class SRPPlaygroundPipeline
                 drawSettingsBase.flags = DrawRendererFlags.EnableDynamicBatching;
                 drawSettingsBase.rendererConfiguration = renderConfig;
 
+            DrawRendererSettings drawSettingsAdd = new DrawRendererSettings(camera, passNameAdd);
+                drawSettingsAdd.flags = DrawRendererFlags.EnableDynamicBatching;
+                drawSettingsAdd.rendererConfiguration = renderConfig;
+
             DrawRendererSettings drawSettingsDepth = new DrawRendererSettings(camera, passNameShadow);
-                drawSettingsBase.flags = DrawRendererFlags.EnableDynamicBatching;
-                drawSettingsBase.rendererConfiguration = renderConfig;
+                drawSettingsDepth.flags = DrawRendererFlags.EnableDynamicBatching;
+                //drawSettingsBase.rendererConfiguration = renderConfig;
 
             //************************** Set TempRT ************************************
             CommandBuffer cmdTempId = new CommandBuffer();
@@ -310,7 +314,6 @@ public static class SRPPlaygroundPipeline
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsDepth, filterSettings);
 
             cmdDepthOpaque.SetGlobalTexture(m_DepthRTid, m_DepthRT);
-                
             context.ExecuteCommandBuffer(cmdDepthOpaque);
             cmdDepthOpaque.Release();
 
@@ -369,6 +372,7 @@ public static class SRPPlaygroundPipeline
 
             cmd.SetRenderTarget(m_ColorRT, m_DepthRT);
             ClearFlag(cmd, camera, camera.backgroundColor);
+            
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Release();
@@ -387,11 +391,18 @@ public static class SRPPlaygroundPipeline
             drawSettingsBase.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
 
-            //************************** Opaque Texture (Grab Pass) ************************************
+            // ADD pass
+            drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
+            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
+
+            //*********************** Opaque Texture (Grab Pass), Blit to Camera Target ************************************
+            //So that the depth texture will work
             CommandBuffer cmdGrab = new CommandBuffer();
             cmdGrab.name = "("+camera.name+")"+ "Grab Opaque";
 
             cmdGrab.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
+            cmdGrab.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
+            cmdGrab.SetRenderTarget(m_ColorRT, m_DepthRT);
 
             context.ExecuteCommandBuffer(cmdGrab);
             cmdGrab.Release();
