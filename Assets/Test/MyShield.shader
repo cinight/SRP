@@ -58,7 +58,7 @@ Shader "Shield 2"
                 o.projPos = ComputeScreenPos (o.vertex);
 
                 COMPUTE_EYEDEPTH(o.projPos.z);
-                o.texcoord = v.texcoord * _MainTex_ST.xy + _MainTex_ST.zw;
+                o.texcoord = v.texcoord;
 
                 return o;
             }
@@ -82,10 +82,10 @@ Shader "Shield 2"
                     float edgearound = pow( fade *_EdgeAroundColor.a, _EdgeAroundPower);
                     col.rgb = lerp( _EdgeAroundColor.rgb, col.rgb, edgearound);
 
-                    //float depth = tex2D(_CameraDepthTexture, i.texcoord).r * 10;
-                    //float4 c = float4(depth, 0 ,0,1);
+                    float depth = tex2D(_CameraDepthTexture, i.texcoord).r * 10;
+                    float4 c = float4(depth, 0 ,0,1);
 
-                return col;
+                return c;
             }
             ENDCG
         }

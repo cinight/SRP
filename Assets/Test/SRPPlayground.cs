@@ -288,6 +288,7 @@ public static class SRPPlaygroundPipeline
                 context.DrawShadows(ref shadowSettings);
 
                 cmdShadow.DisableScissorRect();
+                cmdShadow.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight);
                 context.ExecuteCommandBuffer(cmdShadow);
                 cmdShadow.Clear();
                 cmdShadow.Release();
@@ -323,7 +324,6 @@ public static class SRPPlaygroundPipeline
                 CommandBuffer cmdShadow2 = new CommandBuffer();
                 cmdShadow2.name = "("+camera.name+")"+ "Screen Space Shadow";
 
-                cmdShadow2.SetGlobalTexture(m_ShadowMapLightid, m_ShadowMapLight);
                 cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
                 cmdShadow2.ClearRenderTarget(false, true, Color.white);
 
