@@ -314,30 +314,6 @@ public static class SRPPlaygroundPipeline
             context.ExecuteCommandBuffer(cmdDepthOpaque);
             cmdDepthOpaque.Release();
 
-            //************************** Clear ************************************
-            CommandBuffer cmd = new CommandBuffer();
-            cmd.name = "("+camera.name+")"+ "Clear Flag";
-
-            cmd.SetRenderTarget(m_ColorRT, m_DepthRT);
-            ClearFlag(cmd, camera, camera.backgroundColor);
-
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Release();
-
-            //************************** Skybox ************************************
-            if( camera.clearFlags == CameraClearFlags.Skybox) context.DrawSkybox(camera);
-
-            //************************** Opaque ************************************
-            filterSettings.renderQueueRange = RenderQueueRange.opaque;
-
-            // DEFAULT pass, draw shaders without a pass name
-            drawSettingsDefault.sorting.flags = SortFlags.CommonOpaque;
-            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsDefault, filterSettings);
-
-            // BASE pass
-            drawSettingsBase.sorting.flags = SortFlags.CommonOpaque;
-            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
-
             //************************** Screen Space Shadow ************************************
             if (doShadow)
             {
@@ -386,6 +362,30 @@ public static class SRPPlaygroundPipeline
                 context.ExecuteCommandBuffer(cmdShadow2);
                 cmdShadow2.Release();
             }
+
+            //************************** Clear ************************************
+            CommandBuffer cmd = new CommandBuffer();
+            cmd.name = "("+camera.name+")"+ "Clear Flag";
+
+            cmd.SetRenderTarget(m_ColorRT, m_DepthRT);
+            ClearFlag(cmd, camera, camera.backgroundColor);
+
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Release();
+
+            //************************** Skybox ************************************
+            if( camera.clearFlags == CameraClearFlags.Skybox) context.DrawSkybox(camera);
+
+            //************************** Opaque ************************************
+            filterSettings.renderQueueRange = RenderQueueRange.opaque;
+
+            // DEFAULT pass, draw shaders without a pass name
+            drawSettingsDefault.sorting.flags = SortFlags.CommonOpaque;
+            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsDefault, filterSettings);
+
+            // BASE pass
+            drawSettingsBase.sorting.flags = SortFlags.CommonOpaque;
+            context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
 
             //************************** Opaque Texture (Grab Pass) ************************************
             CommandBuffer cmdGrab = new CommandBuffer();
