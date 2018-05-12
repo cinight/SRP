@@ -82,10 +82,10 @@ Shader "Shield 2"
                     float edgearound = pow( fade *_EdgeAroundColor.a, _EdgeAroundPower);
                     col.rgb = lerp( _EdgeAroundColor.rgb, col.rgb, edgearound);
 
-                    float depth = tex2D(_CameraDepthTexture, i.texcoord).r * 10;
-                    float4 c = float4(depth, 0 ,0,1);
+                    //float depth = tex2D(_CameraDepthTexture, i.texcoord).r * 10;
+                    //float4 c = float4(depth, 0 ,0,1);
 
-                return c;
+                return col;
             }
             ENDCG
         }
