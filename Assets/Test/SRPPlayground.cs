@@ -78,7 +78,7 @@ public static class SRPPlaygroundPipeline
     private static int m_GrabOpaqueRTid = Shader.PropertyToID("_GrabOpaqueTexture"); //Use in shader, for grab pass
     private static int m_DepthRTid = Shader.PropertyToID("_CameraDepthTexture"); //Use in shader, for soft particle
     private static int m_ShadowMapid = Shader.PropertyToID("_ShadowMapTexture"); //Use in shader, for screen-space shadow
-    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMap");
+    private static int m_ShadowMapLightid = Shader.PropertyToID("_ShadowMap"); //Use in shader, for light pov depth
 
     //Render Targets
     private static RenderTargetIdentifier m_ColorRT = new RenderTargetIdentifier(m_ColorRTid);
@@ -96,7 +96,7 @@ public static class SRPPlaygroundPipeline
     private static RenderTextureFormat m_ShadowFormat = RenderTextureFormat.Shadowmap;
     private static RenderTextureFormat m_ShadowMapFormat = RenderTextureFormat.Default;
     private static int depthBufferBits = 32;
-    private static int m_ShadowRes = 1024;
+    private static int m_ShadowRes = 2048;
 
     //Misc
     private static PostProcessRenderContext m_PostProcessRenderContext = new PostProcessRenderContext();
@@ -127,8 +127,7 @@ public static class SRPPlaygroundPipeline
             bool isSceneViewCam = camera.cameraType == CameraType.SceneView;
             //************************** UGUI Geometry on scene view *************************
             #if UNITY_EDITOR
-                 if (camera.cameraType == CameraType.SceneView)
-                    ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
+                 if (isSceneViewCam) ScriptableRenderContext.EmitWorldGeometryForSceneView(camera);
             #endif
 
             //************************** Culling ****************************************
@@ -141,7 +140,6 @@ public static class SRPPlaygroundPipeline
             //************************** Lighting Variables *****************************
             CommandBuffer cmdLighting = new CommandBuffer();
             cmdLighting.name = "("+camera.name+")"+ "Lighting variable";
-            int additionalLightSet = 0;
             int mainLightIndex = -1;
             Light mainLight = null;
 
@@ -188,7 +186,6 @@ public static class SRPPlaygroundPipeline
                 }
                 else
                 {
-                    additionalLightSet++;
                     continue;//so far just do only 1 directional light
                 }
             }
@@ -234,7 +231,7 @@ public static class SRPPlaygroundPipeline
             //Color
             RenderTextureDescriptor colorRTDesc = new RenderTextureDescriptor(camera.pixelWidth, camera.pixelHeight);
             colorRTDesc.colorFormat = m_ColorFormat;
-            colorRTDesc.depthBufferBits = 0;
+            colorRTDesc.depthBufferBits = depthBufferBits; //have depth because we don't want to ruin the _CameraDepthTexture
             colorRTDesc.sRGB = true;
             colorRTDesc.msaaSamples = 1;
             colorRTDesc.enableRandomWrite = false;
@@ -243,7 +240,7 @@ public static class SRPPlaygroundPipeline
             //Shadow
             RenderTextureDescriptor shadowRTDesc = new RenderTextureDescriptor(m_ShadowRes,m_ShadowRes);
             shadowRTDesc.colorFormat = m_ShadowFormat;
-            shadowRTDesc.depthBufferBits = depthBufferBits;
+            shadowRTDesc.depthBufferBits = depthBufferBits; //have depth because it is also a depth texture
             shadowRTDesc.msaaSamples = 1;
             shadowRTDesc.enableRandomWrite = false;
             cmdTempId.GetTemporaryRT(m_ShadowMapLightid, shadowRTDesc,FilterMode.Bilinear);//depth per light
@@ -264,7 +261,6 @@ public static class SRPPlaygroundPipeline
             bool doShadow = cull.GetShadowCasterBounds(mainLightIndex, out bounds);
 
             //************************** Shadow Mapping ************************************
-            
             if (doShadow && !isSceneViewCam)
             {
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
@@ -280,6 +276,7 @@ public static class SRPPlaygroundPipeline
                 cmdShadow.SetRenderTarget(m_ShadowMapLight);
                 cmdShadow.ClearRenderTarget(true, true, Color.black);
 
+                //Change the view to light's point of view
                 cmdShadow.SetViewport(new Rect(0, 0, m_ShadowRes, m_ShadowRes));
                 cmdShadow.EnableScissorRect(new Rect(4, 4, m_ShadowRes - 8, m_ShadowRes - 8));
                 cmdShadow.SetViewProjectionMatrices(view, proj);
@@ -287,7 +284,7 @@ public static class SRPPlaygroundPipeline
                 context.ExecuteCommandBuffer(cmdShadow);
                 cmdShadow.Clear();
 
-                //Render Shadow
+                //Render Shadowmap
                 context.DrawShadows(ref shadowSettings);
 
                 cmdShadow.DisableScissorRect();
@@ -300,14 +297,9 @@ public static class SRPPlaygroundPipeline
             //************************** Camera Parameters ************************************
             context.SetupCameraProperties(camera);
 
-            //************************** Depth (for CameraDepthTexture in shader, also shadowmapping) ************************************
+            //************************** Depth (for CameraDepthTexture) ************************************
             CommandBuffer cmdDepthOpaque = new CommandBuffer();
             cmdDepthOpaque.name = "(" + camera.name + ")" + "Make CameraDepthTexture";
-
-            //if(camera.cameraType == CameraType.SceneView || camera.name == "Preview Camera" || !SystemInfo.graphicsUVStartsAtTop) 
-            //    cmdDepthOpaque.EnableShaderKeyword ("_FLIPUV");
-             //   else 
-             //   cmdDepthOpaque.DisableShaderKeyword ("_FLIPUV");
 
             cmdDepthOpaque.SetRenderTarget(m_DepthRT);
             cmdDepthOpaque.ClearRenderTarget(true, true, Color.black);
@@ -328,6 +320,7 @@ public static class SRPPlaygroundPipeline
                 CommandBuffer cmdShadow2 = new CommandBuffer();
                 cmdShadow2.name = "("+camera.name+")"+ "Screen Space Shadow";
 
+                //Bias
                 if(mainLight != null)
                 {
                     float sign = (SystemInfo.usesReversedZBuffer) ? 1.0f : -1.0f;
@@ -337,9 +330,7 @@ public static class SRPPlaygroundPipeline
                     cmdShadow2.SetGlobalFloat("_ShadowBias", bias);
                 }
 
-                cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
-                cmdShadow2.ClearRenderTarget(false, true, Color.white);
-
+                //Shadow Transform
                 if(successShadowMap)
                 {
                     cmdShadow2.EnableShaderKeyword("SHADOWS_SCREEN");
@@ -371,6 +362,7 @@ public static class SRPPlaygroundPipeline
                     cmdShadow2.SetGlobalFloat("_ShadowStrength", mainLight.shadowStrength);
                 }
 
+                //Render the screen-space shadow
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
 
@@ -382,9 +374,8 @@ public static class SRPPlaygroundPipeline
             CommandBuffer cmd = new CommandBuffer();
             cmd.name = "("+camera.name+")"+ "Clear Flag";
 
-            cmd.SetRenderTarget(m_ColorRT, m_DepthRT);
+            cmd.SetRenderTarget(m_ColorRT);
             ClearFlag(cmd, camera, camera.backgroundColor);
-            
 
             context.ExecuteCommandBuffer(cmd);
             cmd.Release();
@@ -407,18 +398,11 @@ public static class SRPPlaygroundPipeline
             drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
-            //*********************** Opaque Texture (Grab Pass), Blit to Camera Target ************************************
+            //*********************** Opaque Texture (Grab Pass) ************************************
             //So that the depth texture will work
             CommandBuffer cmdGrab = new CommandBuffer();
             cmdGrab.name = "("+camera.name+")"+ "Grab Opaque";
-
             cmdGrab.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
-            cmdGrab.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget); //so that scene view's button works
-            #if UNITY_STANDALONE_WIN
-            cmdGrab.SetRenderTarget(m_ColorRT); //Prevent transparent pass destroy depth on DX11
-            #else
-            cmdGrab.SetRenderTarget(m_ColorRT,m_DepthRT);
-            #endif
             context.ExecuteCommandBuffer(cmdGrab);
             cmdGrab.Release();
 
@@ -434,11 +418,11 @@ public static class SRPPlaygroundPipeline
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsBase, filterSettings);
 
             //************************** Blit to Camera Target ************************************
-            // so that reflection probes will work 
+            // so that reflection probes will work + screen view buttons
             CommandBuffer cmdColor = new CommandBuffer();
-            cmdColor.name = "("+camera.name+")"+ "blit color to cam target";
+            cmdColor.name = "("+camera.name+")"+ "Blit color to cam target";
             cmdColor.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
-            cmdColor.SetRenderTarget(m_ColorRT, m_DepthRT);
+            cmdColor.SetRenderTarget(m_ColorRT);
             context.ExecuteCommandBuffer(cmdColor);
             cmdColor.Release();
 
@@ -446,9 +430,8 @@ public static class SRPPlaygroundPipeline
             m_CameraPostProcessLayer = camera.GetComponent<PostProcessLayer>();
             if(m_CameraPostProcessLayer != null && m_CameraPostProcessLayer.enabled)
             {
-                //Post-processing
                 CommandBuffer cmdpp = new CommandBuffer();
-                cmdpp.name = "("+camera.name+")"+ "Post-processing for Opaque";
+                cmdpp.name = "("+camera.name+")"+ "Post-processing";
 
                 m_PostProcessRenderContext.Reset();
                 m_PostProcessRenderContext.camera = camera;
@@ -459,30 +442,21 @@ public static class SRPPlaygroundPipeline
                 m_PostProcessRenderContext.flip = camera.targetTexture == null;
                 m_CameraPostProcessLayer.Render(m_PostProcessRenderContext);
 
-                //cmdpp.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+                //Target is already CameraTarget
                 
                 context.ExecuteCommandBuffer(cmdpp);
                 cmdpp.Release();
             }
 
-            //************************** Scene View & Preview Camera Fix ************************************
+            //************************** Scene View Fix ************************************
             #if UNITY_EDITOR
                 if (isSceneViewCam) //Copy depth to backbuffer's depth buffer
                 {
                     CommandBuffer cmdSceneDepth = new CommandBuffer();
-                    cmdSceneDepth.name = "("+camera.name+")"+ "Copy Depth to SceneViewCamera";
+                    cmdSceneDepth.name = "("+camera.name+")"+ "Copy Depth to CameraTarget";
                     cmdSceneDepth.Blit(m_DepthRT, BuiltinRenderTextureType.CameraTarget, m_CopyDepthMaterial);
                     context.ExecuteCommandBuffer(cmdSceneDepth);
                     cmdSceneDepth.Release();
-                }
-                else
-                if (camera.name == "Preview Camera") //Must do this blit so that it shows up things...because post-processing isn't enabled in preview cam?
-                {
-                    CommandBuffer cmdPreviewCam = new CommandBuffer();
-                    cmdPreviewCam.name = "("+camera.name+")"+ "preview camera";
-                    //cmdPreviewCam.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
-                    context.ExecuteCommandBuffer(cmdPreviewCam);
-                    cmdPreviewCam.Release();
                 }
             #endif
 
