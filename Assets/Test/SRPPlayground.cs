@@ -414,8 +414,11 @@ public static class SRPPlaygroundPipeline
 
             cmdGrab.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
             cmdGrab.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget); //so that scene view's button works
-            cmdGrab.SetRenderTarget(m_ColorRT, m_DepthRT);
-
+            #if UNITY_STANDALONE_WIN
+            cmdGrab.SetRenderTarget(m_ColorRT); //Prevent transparent pass destroy depth on DX11
+            #else
+            cmdGrab.SetRenderTarget(m_ColorRT,m_DepthRT);
+            #endif
             context.ExecuteCommandBuffer(cmdGrab);
             cmdGrab.Release();
 
