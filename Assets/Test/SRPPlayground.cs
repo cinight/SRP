@@ -402,11 +402,13 @@ public static class SRPPlaygroundPipeline
             // so that reflection probes will work + screen view buttons
             CommandBuffer cmdColorOpaque = new CommandBuffer();
             cmdColorOpaque.name = "("+camera.name+")"+ "After opaque";
-            
+
+            //This blit is necessary for Windows...It makes sure the Z is correct for transparent objects
             cmdColorOpaque.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
             cmdColorOpaque.SetRenderTarget(m_ColorRT);
 
-            cmdColorOpaque.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT); //"Grab" pass
+            //"Grab" pass
+            cmdColorOpaque.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
 
             context.ExecuteCommandBuffer(cmdColorOpaque);
             cmdColorOpaque.Release();
