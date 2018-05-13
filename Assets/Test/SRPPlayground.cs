@@ -309,6 +309,7 @@ public static class SRPPlaygroundPipeline
              //   cmdDepthOpaque.DisableShaderKeyword ("_FLIPUV");
 
             cmdDepthOpaque.SetRenderTarget(m_DepthRT);
+            cmdDepthOpaque.ClearRenderTarget(true, true, Color.black);
             context.ExecuteCommandBuffer(cmdDepthOpaque);
             cmdDepthOpaque.Clear();
 
