@@ -120,9 +120,11 @@ public static class SRPPlaygroundPipeline
         //For shadowmapping, the matrices from the light's point of view
         Matrix4x4 view = Matrix4x4.identity;
         Matrix4x4 proj = Matrix4x4.identity;
+        bool successShadowMap = false;
 
         foreach (Camera camera in cameras)
         {  
+            bool isSceneViewCam = camera.cameraType == CameraType.SceneView;
             //************************** UGUI Geometry on scene view *************************
             #if UNITY_EDITOR
                  if (camera.cameraType == CameraType.SceneView)
@@ -179,7 +181,7 @@ public static class SRPPlaygroundPipeline
 
                         cmdLighting.SetGlobalVector("_LightColor0", lightColors[0]);
                         cmdLighting.SetGlobalVector("_WorldSpaceLightPos0", lightPositions[0] );
-
+                        
                         mainLight = light.light;
                         mainLightIndex = i;
                     }
@@ -262,9 +264,8 @@ public static class SRPPlaygroundPipeline
             bool doShadow = cull.GetShadowCasterBounds(mainLightIndex, out bounds);
 
             //************************** Shadow Mapping ************************************
-            bool successShadowMap = false;
             
-            if (doShadow && camera.cameraType != CameraType.SceneView)
+            if (doShadow && !isSceneViewCam)
             {
                 DrawShadowsSettings shadowSettings = new DrawShadowsSettings(cull, mainLightIndex);
 
@@ -326,6 +327,15 @@ public static class SRPPlaygroundPipeline
             {
                 CommandBuffer cmdShadow2 = new CommandBuffer();
                 cmdShadow2.name = "("+camera.name+")"+ "Screen Space Shadow";
+
+                if(mainLight != null)
+                {
+                    float sign = (SystemInfo.usesReversedZBuffer) ? 1.0f : -1.0f;
+                    if(isSceneViewCam) sign = - sign * 0.01f;
+                    float bias = mainLight.shadowBias * proj.m22 * sign;
+
+                    cmdShadow2.SetGlobalFloat("_ShadowBias", bias);
+                }
 
                 cmdShadow2.SetRenderTarget(m_ShadowMap, m_DepthRT);
                 cmdShadow2.ClearRenderTarget(false, true, Color.white);
@@ -455,7 +465,7 @@ public static class SRPPlaygroundPipeline
 
             //************************** Scene View & Preview Camera Fix ************************************
             #if UNITY_EDITOR
-                if (camera.cameraType == CameraType.SceneView) //Scene view needs SV_Depth, so that gizmo and grid will appear
+                if (isSceneViewCam) //Scene view needs SV_Depth, so that gizmo and grid will appear
                 {
                     CommandBuffer cmdSceneDepth = new CommandBuffer();
                     cmdSceneDepth.name = "("+camera.name+")"+ "Copy Depth to SceneViewCamera";

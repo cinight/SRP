@@ -24,6 +24,7 @@ Shader "Hidden/My/ScreenSpaceShadows"
             Texture2D _ShadowMap;
             SamplerComparisonState sampler_ShadowMap;
             SamplerState sampler_ShadowMap_state;
+            float _ShadowBias;
 
             float4x4 _WorldToShadow;
             float _ShadowStrength;
@@ -74,6 +75,8 @@ Shader "Hidden/My/ScreenSpaceShadows"
                 #if UNITY_UV_STARTS_AT_TOP
                     positionCS.y = -positionCS.y;
                 #endif
+                    // _ShadowBias.x sign depens on if platform has reversed z buffer
+                positionCS.z += _ShadowBias;
 
                 //View
                 float4 positionVS = mul(unity_CameraInvProjection, positionCS);
