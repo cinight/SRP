@@ -87,7 +87,7 @@ public static class SRPPlaygroundPipeline
     private static RenderTargetIdentifier m_ShadowMapLight = new RenderTargetIdentifier(m_ShadowMapLightid);
 
     //Blit Materials
-    public static Material m_CopyDepthMaterial; //This shader generates SV_Depth, scene view needs it
+    public static Material m_CopyDepthMaterial; //For blitting the depth buffer
     public static Material m_ScreenSpaceShadowsMaterial;
 
     //Constants
@@ -373,7 +373,6 @@ public static class SRPPlaygroundPipeline
 
                 cmdShadow2.Blit(m_ShadowMap, m_ShadowMap, m_ScreenSpaceShadowsMaterial);
                 cmdShadow2.SetGlobalTexture(m_ShadowMapid,m_ShadowMap);
-                cmdShadow2.SetRenderTarget(m_ColorRT, m_DepthRT);
 
                 context.ExecuteCommandBuffer(cmdShadow2);
                 cmdShadow2.Release();
@@ -414,7 +413,7 @@ public static class SRPPlaygroundPipeline
             cmdGrab.name = "("+camera.name+")"+ "Grab Opaque";
 
             cmdGrab.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
-            cmdGrab.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
+            cmdGrab.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget); //so that scene view's button works
             cmdGrab.SetRenderTarget(m_ColorRT, m_DepthRT);
 
             context.ExecuteCommandBuffer(cmdGrab);
@@ -457,7 +456,7 @@ public static class SRPPlaygroundPipeline
                 m_PostProcessRenderContext.flip = camera.targetTexture == null;
                 m_CameraPostProcessLayer.Render(m_PostProcessRenderContext);
 
-                cmdpp.SetRenderTarget(BuiltinRenderTextureType.CameraTarget,m_DepthRT);
+                //cmdpp.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
                 
                 context.ExecuteCommandBuffer(cmdpp);
                 cmdpp.Release();
@@ -465,7 +464,7 @@ public static class SRPPlaygroundPipeline
 
             //************************** Scene View & Preview Camera Fix ************************************
             #if UNITY_EDITOR
-                if (isSceneViewCam) //Scene view needs SV_Depth, so that gizmo and grid will appear
+                if (isSceneViewCam) //Copy depth to backbuffer's depth buffer
                 {
                     CommandBuffer cmdSceneDepth = new CommandBuffer();
                     cmdSceneDepth.name = "("+camera.name+")"+ "Copy Depth to SceneViewCamera";
@@ -478,7 +477,7 @@ public static class SRPPlaygroundPipeline
                 {
                     CommandBuffer cmdPreviewCam = new CommandBuffer();
                     cmdPreviewCam.name = "("+camera.name+")"+ "preview camera";
-                    cmdPreviewCam.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
+                    //cmdPreviewCam.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
                     context.ExecuteCommandBuffer(cmdPreviewCam);
                     cmdPreviewCam.Release();
                 }
