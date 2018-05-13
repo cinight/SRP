@@ -398,13 +398,18 @@ public static class SRPPlaygroundPipeline
             drawSettingsAdd.sorting.flags = SortFlags.CommonOpaque;
             context.DrawRenderers(cull.visibleRenderers, ref drawSettingsAdd, filterSettings);
 
-            //*********************** Opaque Texture (Grab Pass) ************************************
-            //So that the depth texture will work
-            CommandBuffer cmdGrab = new CommandBuffer();
-            cmdGrab.name = "("+camera.name+")"+ "Grab Opaque";
-            cmdGrab.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT);
-            context.ExecuteCommandBuffer(cmdGrab);
-            cmdGrab.Release();
+            //************************** Blit to Camera Target ************************************
+            // so that reflection probes will work + screen view buttons
+            CommandBuffer cmdColorOpaque = new CommandBuffer();
+            cmdColorOpaque.name = "("+camera.name+")"+ "After opaque";
+            
+            cmdColorOpaque.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
+            cmdColorOpaque.SetRenderTarget(m_ColorRT);
+
+            cmdColorOpaque.SetGlobalTexture(m_GrabOpaqueRTid, m_ColorRT); //"Grab" pass
+
+            context.ExecuteCommandBuffer(cmdColorOpaque);
+            cmdColorOpaque.Release();
 
             //************************** Transparent ************************************
             filterSettings.renderQueueRange = RenderQueueRange.transparent;
@@ -420,7 +425,7 @@ public static class SRPPlaygroundPipeline
             //************************** Blit to Camera Target ************************************
             // so that reflection probes will work + screen view buttons
             CommandBuffer cmdColor = new CommandBuffer();
-            cmdColor.name = "("+camera.name+")"+ "Blit color to cam target";
+            cmdColor.name = "("+camera.name+")"+ "After transparent";
             cmdColor.Blit(m_ColorRT, BuiltinRenderTextureType.CameraTarget);
             cmdColor.SetRenderTarget(m_ColorRT);
             context.ExecuteCommandBuffer(cmdColor);
