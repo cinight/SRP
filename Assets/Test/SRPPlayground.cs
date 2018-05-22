@@ -41,7 +41,7 @@ public class SRPPlaygroundInstance : RenderPipeline
                 rendererSupportsReceiveShadows = true,
                 rendererSupportsReflectionProbes = true
             };
-            SceneViewDrawMode.SetupDrawMode();
+            SRPPlaygroundSceneView.SetupDrawMode();
         #endif
 
         //Create Blit Materials
