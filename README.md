@@ -4,7 +4,7 @@ This pipeline is just for self-learning how to use different Unity features and 
 
 # What it has
 
-![Alt text](https://dexint.files.wordpress.com/2018/05/may-14-2018-gif.gif)
+![Alt text](https://media.giphy.com/media/3eRwVomnnZpbFC0Ccz/giphy.gif)
 ![Alt text](https://dexint.files.wordpress.com/2018/05/screen-shot-2018-05-12-at-18-52-43.png)
 
 # How it works
