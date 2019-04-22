@@ -1,6 +1,6 @@
 Update:
 
-If you are using 2019.1+, you might notice there is a big change to the SRP APIs.
+If you are using 2019.1+, you might notice there is a big change to the SRP APIs. \
 I’ve created a new repository and you can grab here. Much cleaner and minimal.
 
 https://github.com/cinight/CustomSRP
